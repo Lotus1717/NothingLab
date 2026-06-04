@@ -1,0 +1,24 @@
+name: nonsense_prophet
+description: 基于手机传感器的无厘头预言 App
+publish_to: 'none'
+version: 1.0.0+1
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  battery_plus: ^6.0.3
+  sensors_plus: ^5.0.1
+  pedometer_2: ^5.0.4
+  screen_brightness: ^1.0.1
+  provider: ^6.1.2
+  shared_preferences: ^2.3.2
+  http: ^1.2.2
+  permission_handler: ^11.3.1
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+flutter:
+  uses-material-design: true

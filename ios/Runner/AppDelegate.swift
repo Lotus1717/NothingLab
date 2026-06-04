@@ -1,0 +1,94 @@
+import Flutter
+import UIKit
+
+@main
+@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
+    
+    private var mlChannel: FlutterMethodChannel?
+    
+    override func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
+        return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    }
+    
+    func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
+        GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+        
+        // 注册 MethodChannel 供 Dart 端调用
+        let controller = engineBridge.flutterViewController
+        mlChannel = FlutterMethodChannel(
+            name: "com.nonsense_prophet/ml",
+            binaryMessenger: controller.binaryMessenger
+        )
+        
+        mlChannel?.setMethodCallHandler { [weak self] (call, result) in
+            guard let self = self else { return }
+            
+            switch call.method {
+                
+            case "isLoaded":
+                result(MLProphecyGenerator.shared.isModelLoaded)
+                
+            case "getLoadProgress":
+                result(MLProphecyGenerator.shared.loadProgress)
+                
+            case "isDownloading":
+                result(MLProphecyGenerator.shared.isDownloading)
+                
+            case "loadModel":
+                Task {
+                    do {
+                        try await MLProphecyGenerator.shared.loadModel { progress in
+                            // 通过 EventChannel 发送进度（改为调用 method）
+                            DispatchQueue.main.async {
+                                self.mlChannel?.invokeMethod("onLoadProgress", arguments: progress)
+                            }
+                        }
+                        result(nil)
+                    } catch {
+                        result(FlutterError(
+                            code: "MODEL_LOAD_ERROR",
+                            message: error.localizedDescription,
+                            details: nil
+                        ))
+                    }
+                }
+                
+            case "generateProphecy":
+                guard let args = call.arguments as? [String: Any] else {
+                    result(FlutterError(code: "INVALID_ARGS", message: "参数错误", details: nil))
+                    return
+                }
+                Task {
+                    do {
+                        let prophecy = try await MLProphecyGenerator.shared.generateProphecy(
+                            battery: args["battery"] as? Int ?? 50,
+                            brightness: args["brightness"] as? Int ?? 50,
+                            steps: args["steps"] as? Int ?? 0,
+                            isMoving: args["isMoving"] as? Bool ?? false,
+                            ambientLight: args["ambientLight"] as? Int ?? 100,
+                            timeHint: args["timeHint"] as? String ?? "",
+                            dayPhase: args["dayPhase"] as? String ?? ""
+                        )
+                        result(prophecy)
+                    } catch {
+                        result(FlutterError(
+                            code: "GENERATION_ERROR",
+                            message: error.localizedDescription,
+                            details: nil
+                        ))
+                    }
+                }
+                
+            case "unloadModel":
+                MLProphecyGenerator.shared.unloadModel()
+                result(nil)
+                
+            default:
+                result(FlutterMethodNotImplemented)
+            }
+        }
+    }
+}

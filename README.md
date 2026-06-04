@@ -1,17 +1,66 @@
-# nonsense_prophet
+# 🐣 废话预言家
 
-A new Flutter project.
+基于手机传感器 + 本地 AI 模型的无厘头预言 App。
 
-## Getting Started
+## 特色
 
-This project is a starting point for a Flutter application.
+- 📱 读取手机传感器（电量、亮度、步数、加速度）
+- 🧠 **使用 Apple MLX 框架本地运行 AI 模型**，生成独一无二的预言
+- 🎲 每次摇一摇，得到不同的废话
+- 📋 历史记录
 
-A few resources to get you started if this is your first Flutter project:
+## 技术栈
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+- **Flutter** 跨平台框架
+- **MLX Swift** — Apple 自家 ML 框架，在 iPhone 本地运行小语言模型
+- **传感器**：battery_plus, sensors_plus, pedometer_2, screen_brightness
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## 本地运行
+
+### 前置要求
+
+- Flutter SDK 3.27+
+- Xcode 15+（iOS 17+）
+- 一台 Apple Silicon Mac
+
+### 运行步骤
+
+```bash
+# 1. 安装依赖
+flutter pub get
+
+# 2. 打开 Xcode 工作区
+open ios/Runner.xcworkspace
+
+# 3. 添加 MLX Swift 依赖（重要！）
+# 在 Xcode 中：
+#   - File → Add Package Dependencies...
+#   - 搜索：https://github.com/ml-explore/mlx-swift
+#   - 添加以下 Package：
+#     ✅ MLX
+#     ✅ MLXLLM
+#     ✅ MLXLMCommon
+#   - Branch: main
+
+# 4. 运行
+flutter run
+```
+
+### 首次使用
+
+1. 打开 App 后，进入「设置」页
+2. 点击「下载 AI 模型（约 200MB）」
+3. 等待下载完成（首次仅需一次）
+4. 回到首页，戳骰子 🎲
+
+模型会缓存到本地，后续使用无需再次下载。
+
+## 模型说明
+
+使用 **Qwen2.5-0.5B-4bit** 经过 MLX 量化，约 200MB，在 iPhone 上可流畅运行。
+
+生成预言时，模型会根据当前传感器数据，现场编造一句无厘头的中文预言。每次戳出来的都不一样。
+
+---
+
+Built with ❤️ by Lotus

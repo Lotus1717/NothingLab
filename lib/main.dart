@@ -441,16 +441,20 @@ class _AppRootState extends State<AppRoot> {
     final ai = context.read<AiService>();
     await ai.checkModelAvailability();
 
-    if (ai.isModelAvailable && !ai.modelLoaded) {
-      // 询问用户是否要下载模型
-      if (mounted) {
-        setState(() => _checkingModel = false);
-      }
-    } else {
-      if (mounted) {
-        setState(() => _checkingModel = false);
-      }
+    if (mounted) {
+      setState(() => _checkingModel = false);
     }
+  }
+
+  Future<void> _downloadModel() async {
+    setState(() => _loadingModel = true);
+    final ai = context.read<AiService>();
+    await ai.loadModel(
+      onProgress: (p) {
+        if (mounted) setState(() => _modelProgress = p);
+      },
+    );
+    if (mounted) setState(() => _loadingModel = false);
   }
 
   @override
@@ -644,7 +648,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                     IconButton(
                       icon: const Icon(Icons.refresh_rounded, size: 24),
-                      onPressed: () {},
+                      onPressed: () => sensorSvc.init(),
                       color: AppTheme.textLight,
                     ),
                   ],
@@ -897,9 +901,9 @@ class _ProphecyCard extends StatelessWidget {
       tween: Tween(begin: 0, end: 1),
       duration: const Duration(milliseconds: 450),
       curve: Curves.elasticOut,
-      builder: (context, v, _) => Transform.scale(
+      builder: (context, v, child) => Transform.scale(
         scale: 0.92 + 0.08 * v,
-        child: Opacity(opacity: v, child: this),
+        child: Opacity(opacity: v, child: child),
       ),
       child: Container(
         width: double.infinity,
@@ -1194,7 +1198,9 @@ class SettingsPage extends StatelessWidget {
                   ),
                 ),
               ),
-            _settingCard('🗑️ 擦掉所有废话', '点击清空', false, danger: true),
+            _settingCard('🗑️ 擦掉所有废话', '点击清空', false,
+                danger: true,
+                onTap: () => context.read<AiService>().clearHistory()),
             const SizedBox(height: 20),
             const Center(
               child: Text(
@@ -1211,48 +1217,51 @@ class SettingsPage extends StatelessWidget {
   }
 
   Widget _settingCard(String title, String value, bool isReal,
-      {bool danger = false}) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.07),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: danger ? Colors.red : AppTheme.textDark,
+      {bool danger = false, VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.07),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: danger ? Colors.red : AppTheme.textDark,
+                ),
               ),
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-            decoration: BoxDecoration(
-              color: isReal ? AppTheme.bgMint : const Color(0xFFF5F5F5),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 12,
-                color: isReal ? AppTheme.secondary : AppTheme.textLight,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+              decoration: BoxDecoration(
+                color: isReal ? AppTheme.bgMint : const Color(0xFFF5F5F5),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                value,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isReal ? AppTheme.secondary : AppTheme.textLight,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

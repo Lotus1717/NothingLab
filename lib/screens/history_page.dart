@@ -26,7 +26,7 @@ class HistoryPage extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                   child: Row(
                     children: [
-                      Text('📋 小本本', style: AppTheme.pageTitle(context)),
+                      Text('小本本', style: AppTheme.pageTitle(context)),
                       const Spacer(),
                       Material(
                         color: Colors.transparent,
@@ -43,7 +43,8 @@ class HistoryPage extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                           child: const Padding(
                             padding: EdgeInsets.all(8),
-                            child: Text('🗑️', style: TextStyle(fontSize: 22)),
+                            child: Icon(Icons.delete_outline_rounded,
+                                size: 22, color: AppTheme.textMuted),
                           ),
                         ),
                       ),
@@ -94,7 +95,7 @@ class _HistoryList extends StatelessWidget {
                 child: _HistoryItem(
                   item: entry.record,
                   timeLabel: _formatTime(entry.record.time),
-                  onDoubleTap: () => ai.deleteHistory(entry.index),
+                  onDelete: () => ai.deleteHistory(entry.index),
                 ),
               );
             }),
@@ -164,18 +165,30 @@ String _formatTime(int ts) {
 class _HistoryItem extends StatelessWidget {
   final ProphecyRecord item;
   final String timeLabel;
-  final VoidCallback onDoubleTap;
+  final VoidCallback onDelete;
 
   const _HistoryItem({
     required this.item,
     required this.timeLabel,
-    required this.onDoubleTap,
+    required this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onDoubleTap: onDoubleTap,
+    return Dismissible(
+      key: ValueKey(item.time),
+      direction: DismissDirection.endToStart,
+      onDismissed: (_) => onDelete(),
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        decoration: BoxDecoration(
+          color: AppTheme.danger.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        ),
+        child: const Icon(Icons.delete_outline_rounded,
+            color: AppTheme.danger, size: 28),
+      ),
       child: AppCard(
         padding: const EdgeInsets.all(18),
         child: Column(
@@ -204,12 +217,18 @@ class _HistoryItem extends StatelessWidget {
               children: [
                 if (item.battery != null)
                   StatusChip(
-                    label: '🔋 ${item.battery}%',
+                    label: '${item.battery}%',
+                    icon: Icons.battery_charge_full_rounded,
                     active: true,
                   ),
-                StatusChip(label: '🚶 ${item.steps}', active: true),
                 StatusChip(
-                  label: item.isMoving ? '📳 动' : '📳 静',
+                  label: '${item.steps}',
+                  icon: Icons.directions_walk_rounded,
+                  active: true,
+                ),
+                StatusChip(
+                  label: item.isMoving ? '移动' : '静止',
+                  icon: Icons.sensors_rounded,
                   active: item.isMoving,
                 ),
               ],
@@ -218,17 +237,6 @@ class _HistoryItem extends StatelessWidget {
             Text(
               item.text,
               style: AppTheme.bodyMedium(context).copyWith(height: 1.55),
-            ),
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                '双击删除',
-                style: AppTheme.caption(context).copyWith(
-                  color: AppTheme.textLight,
-                  fontSize: 11,
-                ),
-              ),
             ),
           ],
         ),

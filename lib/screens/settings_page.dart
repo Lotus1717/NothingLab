@@ -33,6 +33,43 @@ class _SettingsPageState extends State<SettingsPage> {
     if (mounted) setState(() => _loadingModel = false);
   }
 
+  Future<void> _confirmClearAll() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        ),
+        title: const Text('擦掉所有废话？'),
+        content: const Text('历史记录将永久消失，此操作不可撤销。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('取消',
+                style: TextStyle(color: AppTheme.textMuted)),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.danger,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+              ),
+            ),
+            child: const Text('确认擦掉'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      context.read<AiService>().clearHistory();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('已全部擦掉')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final sensor = context.watch<SensorService>().data;
@@ -46,7 +83,14 @@ class _SettingsPageState extends State<SettingsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 8),
-              Text('⚙️ 小设置', style: AppTheme.pageTitle(context)),
+              Row(
+                children: [
+                  Icon(Icons.tune_rounded,
+                      size: 24, color: AppTheme.textDark),
+                  const SizedBox(width: 8),
+                  Text('小设置', style: AppTheme.pageTitle(context)),
+                ],
+              ),
               const SizedBox(height: 8),
               Text(
                 '传感器与神谕引擎',
@@ -55,25 +99,29 @@ class _SettingsPageState extends State<SettingsPage> {
               const SizedBox(height: 20),
               const SectionHeader(title: '传感器状态'),
               _SettingRow(
-                title: '🔋 电池',
+                icon: Icons.battery_charge_full_rounded,
+                title: '电池',
                 value: sensor.isRealBattery ? '真实数据' : '模拟数据',
                 isReal: sensor.isRealBattery,
               ),
               _SettingRow(
-                title: '📳 运动',
+                icon: Icons.sensors_rounded,
+                title: '运动',
                 value: sensor.isRealMotion ? '真实数据' : '模拟数据',
                 isReal: sensor.isRealMotion,
               ),
               _SettingRow(
-                title: '🦶 步数',
+                icon: Icons.directions_walk_rounded,
+                title: '步数',
                 value: sensor.isRealSteps ? '真实数据' : '模拟数据',
                 isReal: sensor.isRealSteps,
               ),
               const SectionHeader(title: '预言引擎'),
               _SettingRow(
-                title: '🧠 AI 引擎',
+                icon: Icons.psychology_rounded,
+                title: 'AI 引擎',
                 value: ai.localAi.modelAvailable
-                    ? 'AI 已就绪 🧠'
+                    ? 'AI 已就绪'
                     : ai.isModelAvailable
                         ? (ai.modelLoaded ? 'MLX 模型' : '可用，未加载')
                         : '本地回退模式',
@@ -90,15 +138,13 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               const SectionHeader(title: '数据'),
               _SettingRow(
-                title: '🗑️ 擦掉所有废话',
+                icon: Icons.delete_outline_rounded,
+                title: '擦掉所有废话',
                 value: '点击清空',
                 isReal: false,
                 danger: true,
                 onTap: () {
-                  context.read<AiService>().clearHistory();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('已全部擦掉')),
-                  );
+                  _confirmClearAll(context);
                 },
               ),
               const SizedBox(height: 28),
@@ -119,6 +165,7 @@ class _SettingsPageState extends State<SettingsPage> {
 }
 
 class _SettingRow extends StatelessWidget {
+  final IconData icon;
   final String title;
   final String value;
   final bool isReal;
@@ -126,6 +173,7 @@ class _SettingRow extends StatelessWidget {
   final VoidCallback? onTap;
 
   const _SettingRow({
+    required this.icon,
     required this.title,
     required this.value,
     required this.isReal,
@@ -146,6 +194,10 @@ class _SettingRow extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
             child: Row(
               children: [
+                Icon(icon,
+                    size: 20,
+                    color: danger ? AppTheme.danger : AppTheme.textMuted),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     title,

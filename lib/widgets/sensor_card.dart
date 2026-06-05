@@ -28,7 +28,7 @@ class SensorCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _SensorTile(
-                  icon: '🔋',
+                  icon: Icons.battery_charge_full_rounded,
                   label: '电量',
                   value: '${sensor.battery ?? "--"}%',
                 ),
@@ -36,7 +36,7 @@ class SensorCard extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: _SensorTile(
-                  icon: '☀️',
+                  icon: Icons.brightness_high_rounded,
                   label: '亮度',
                   value: '${sensor.brightness}%',
                 ),
@@ -48,7 +48,7 @@ class SensorCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _SensorTile(
-                  icon: '🚶',
+                  icon: Icons.directions_walk_rounded,
                   label: '步数',
                   value: '${sensor.steps}',
                 ),
@@ -56,7 +56,7 @@ class SensorCard extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: _SensorTile(
-                  icon: '📳',
+                  icon: Icons.sensors_rounded,
                   label: '状态',
                   value: sensor.isMoving ? '移动中' : '静止',
                 ),
@@ -78,12 +78,14 @@ class SensorCard extends StatelessWidget {
                 ),
               ),
               StatusChip(
-                label: sensor.isRealBattery ? '🔋 真' : '🔋 模',
+                label: sensor.isRealBattery ? '电池' : '模拟',
+                icon: Icons.battery_charge_full_rounded,
                 active: sensor.isRealBattery,
               ),
               const SizedBox(width: 6),
               StatusChip(
-                label: sensor.isRealMotion ? '📳 真' : '📳 模',
+                label: sensor.isRealMotion ? '运动' : '模拟',
+                icon: Icons.sensors_rounded,
                 active: sensor.isRealMotion,
               ),
             ],
@@ -95,7 +97,7 @@ class SensorCard extends StatelessWidget {
 }
 
 class _SensorTile extends StatelessWidget {
-  final String icon;
+  final IconData icon;
   final String label;
   final String value;
 
@@ -118,7 +120,7 @@ class _SensorTile extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text(icon, style: const TextStyle(fontSize: 18)),
+              Icon(icon, size: 18, color: AppTheme.secondary),
               const SizedBox(width: 6),
               Text(label, style: AppTheme.caption(context)),
             ],

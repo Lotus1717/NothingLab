@@ -6,12 +6,14 @@ class StatusChip extends StatelessWidget {
   final String label;
   final bool active;
   final Color? activeColor;
+  final IconData? icon;
 
   const StatusChip({
     super.key,
     required this.label,
     this.active = false,
     this.activeColor,
+    this.icon,
   });
 
   @override
@@ -31,13 +33,22 @@ class StatusChip extends StatelessWidget {
           width: 0.8,
         ),
       ),
-      child: Text(
-        label,
-        style: AppTheme.caption(context).copyWith(
-          fontSize: 11,
-          fontWeight: FontWeight.w500,
-          color: active ? color : AppTheme.textMuted,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 12, color: active ? color : AppTheme.textMuted),
+            const SizedBox(width: 3),
+          ],
+          Text(
+            label,
+            style: AppTheme.caption(context).copyWith(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: active ? color : AppTheme.textMuted,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -22,7 +22,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AiService()),
       ],
       child: MaterialApp(
-        title: '🐣 废话预言家',
+        title: '废话预言家',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         home: const AppRoot(),

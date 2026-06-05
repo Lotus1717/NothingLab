@@ -24,19 +24,19 @@ class AppTheme {
       EdgeInsets.symmetric(horizontal: 20, vertical: 16);
 
   static TextStyle displayTitle(BuildContext context) =>
-      GoogleFonts.fredoka(
+      GoogleFonts.zcoolKuaiLe(
         fontSize: 26,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w400,
         color: textDark,
-        height: 1.2,
+        height: 1.3,
       );
 
   static TextStyle pageTitle(BuildContext context) =>
-      GoogleFonts.fredoka(
+      GoogleFonts.zcoolKuaiLe(
         fontSize: 22,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w400,
         color: textDark,
-        height: 1.25,
+        height: 1.3,
       );
 
   static TextStyle sectionHeader(BuildContext context) =>

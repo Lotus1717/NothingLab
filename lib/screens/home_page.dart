@@ -102,7 +102,7 @@ class _HomePageState extends State<HomePage> {
                     )
                   else if (!aiSvc.loading)
                     const OracleEmptyState(
-                      emoji: '🔮',
+                      emoji: '🎲',
                       title: '神谕尚未降临',
                       subtitle: '轻触骰子，让传感器与命运开个玩笑',
                     ),
@@ -141,7 +141,17 @@ class _HomeHero extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('🐣', style: TextStyle(fontSize: 32)),
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: AppTheme.oracleGoldLight,
+            borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+          ),
+          alignment: Alignment.center,
+          child: const Icon(Icons.auto_awesome_rounded,
+              size: 24, color: AppTheme.oracleGold),
+        ),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -165,10 +175,15 @@ class _HomeHero extends StatelessWidget {
             padding: const EdgeInsets.only(top: 4),
             child: StatusChip(
               label: aiSvc.localAi.modelAvailable
-                  ? '🧠 AI'
+                  ? 'AI'
                   : aiSvc.modelLoaded
-                      ? '🧠 MLX'
-                      : '📡 本地',
+                      ? 'MLX'
+                      : '本地',
+              icon: aiSvc.localAi.modelAvailable
+                  ? Icons.auto_awesome_rounded
+                  : aiSvc.modelLoaded
+                      ? Icons.memory_rounded
+                      : Icons.cloud_off_rounded,
               active: aiSvc.localAi.modelAvailable || aiSvc.modelLoaded,
               activeColor: AppTheme.secondary,
             ),

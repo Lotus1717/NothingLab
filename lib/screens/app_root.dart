@@ -41,7 +41,17 @@ class _AppRootState extends State<AppRoot> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('🐣', style: TextStyle(fontSize: 48)),
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: AppTheme.oracleGoldLight,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  alignment: Alignment.center,
+                  child: const Icon(Icons.auto_awesome_rounded,
+                      size: 36, color: AppTheme.oracleGold),
+                ),
                 const SizedBox(height: 16),
                 Text(
                   '废话预言家',

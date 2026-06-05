@@ -7,6 +7,7 @@ import 'package:sensors_plus/sensors_plus.dart';
 import 'package:pedometer_2/pedometer_2.dart';
 import 'config/theme.dart';
 import 'services/prophecy_generator.dart';
+import 'services/local_ai_bridge.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -232,16 +233,17 @@ class SensorService extends ChangeNotifier {
 }
 
 // ═══════════════════════════════════════════
-//  AI 预言服务（支持真实 ML 模型 + 本地回退）
+//  AI 预言服务（支持本地 AI 模型 + 本地回退）
 // ═══════════════════════════════════════════
 
 class AiService extends ChangeNotifier {
   bool _loading = false;
   bool _modelLoaded = false;
-  bool _isModelAvailable = false; // 是否 iOS 且支持 MLX
+  bool _isModelAvailable = false;
   String _currentProphecy = '';
   List<Map<String, dynamic>> _history = [];
 
+  final LocalAiBridge _localAi = LocalAiBridge();
   final ProphecyGeneratorBridge _bridge = ProphecyGeneratorBridge();
 
   bool get loading => _loading;
@@ -249,6 +251,7 @@ class AiService extends ChangeNotifier {
   bool get isModelAvailable => _isModelAvailable;
   String get currentProphecy => _currentProphecy;
   List<Map<String, dynamic>> get history => _history;
+  LocalAiBridge get localAi => _localAi;
 
   static const _animalLoading = [
     '🐱 小猫正在抓阄中...',
@@ -258,10 +261,20 @@ class AiService extends ChangeNotifier {
     '🦡 獾子在推算命运...',
   ];
 
-  /// 检查 MLX 模型是否可用（仅 iOS）
+  /// 检查模型可用性
+  /// 优先检查 flutter_local_ai，备选旧的 MethodChannel（iOS MLX）
   Future<void> checkModelAvailability() async {
+    // 先尝试 flutter_local_ai
+    await _localAi.initialize();
+    if (_localAi.modelAvailable) {
+      _isModelAvailable = true;
+      _modelLoaded = true;
+      notifyListeners();
+      return;
+    }
+
+    // 回退：检查旧的 MethodChannel（iOS MLX）
     try {
-      // 尝试调用 MethodChannel，如果平台不支持会抛出异常
       final loaded = await _bridge.isLoaded();
       _isModelAvailable = true;
       _modelLoaded = loaded;
@@ -269,71 +282,93 @@ class AiService extends ChangeNotifier {
     } catch (e) {
       _isModelAvailable = false;
       _modelLoaded = false;
-      debugPrint('MLX model not available: $e');
+      debugPrint('ML model not available: $e');
     }
   }
 
-  /// 加载 ML 模型（首次需下载约 200MB）
-  Future<void> loadModel({
-    void Function(double progress)? onProgress,
-  }) async {
-    if (_modelLoaded || !_isModelAvailable) return;
+  /// 加载本地 AI 模型
+  Future<void> loadModel() async {
+    if (_modelLoaded) return;
 
-    _loading = true;
-    notifyListeners();
-
-    try {
-      await _bridge.loadModel();
+    // 尝试 flutter_local_ai
+    await _localAi.initialize();
+    if (_localAi.modelAvailable) {
       _modelLoaded = true;
-    } catch (e) {
-      debugPrint('Model load failed: $e');
-    } finally {
-      _loading = false;
+      _isModelAvailable = true;
+      notifyListeners();
+      return;
+    }
+
+    // 回退：旧 MethodChannel（iOS MLX）
+    if (_isModelAvailable && !_modelLoaded) {
+      try {
+        await _bridge.loadModel();
+        _modelLoaded = true;
+      } catch (e) {
+        debugPrint('Model load failed: $e');
+      }
       notifyListeners();
     }
   }
 
-  /// 本地回退预言库（当 ML 模型不可用时）
   static final _fallbackProphecies = [
-    (d) =>
+    (SensorData d) =>
         '电量${d.battery ?? 50}%时，你的拇指滑屏速度会比平时快${((d.battery ?? 50) % 5 + 1) * 0.2}倍',
-    (d) =>
+    (SensorData d) =>
         '今日步数${d.steps}步，你的手指比预期早了${((d.battery ?? 50) % 7) * 0.1}秒划到下一张图',
-    (d) =>
+    (SensorData d) =>
         '屏幕亮度${d.brightness}%时，你的下一口呼吸比上一口重${(((d.battery ?? 50) % 3) + 1) * 0.001}克',
-    (d) =>
+    (SensorData d) =>
         '电量${d.battery ?? 50}%且${d.isMoving ? "正在移动" : "静止"}，你接下来的路会踩到一片落叶',
-    (d) =>
+    (SensorData d) =>
         '步数破${(d.steps / 1000).ceil()}k时，你划过的第${((d.battery ?? 50) % 5) + 1}条视频会讲一只猫的名字',
-    (d) =>
+    (SensorData d) =>
         '当前状态${d.timeHint}，你的眼角余光会捕捉到一只路过的小鸟',
-    (d) =>
+    (SensorData d) =>
         '电量${d.battery ?? 50}%的此刻，你口袋里有一张被遗忘的小票在等你发现',
-    (d) =>
+    (SensorData d) =>
         '${d.dayPhase}好！根据你${d.isMoving ? "正在移动" : "静止"}的状态推算，你下一次打哈欠会在${((d.battery ?? 50) % 8) + 2}分钟后',
-    (d) =>
+    (SensorData d) =>
         '你的手机壳温度比平时高了${(((d.battery ?? 50) % 3) + 1) * 0.3}℃，说明你刚才握得比较紧',
-    (d) =>
+    (SensorData d) =>
         '步数${d.steps}，你今天少走的${((d.battery ?? 50) % 200 + 50)}步会在明天变成小零食补回来',
-    (d) =>
+    (SensorData d) =>
         '电量${d.battery ?? 50}%时，你更适合做需要耐心的决定——比如先刷哪条视频',
-    (d) =>
+    (SensorData d) =>
         '现在是${d.dayPhase}，你大脑的多巴胺水平比上午低了${((d.battery ?? 50) % 20) + 5}%',
-    (d) =>
+    (SensorData d) =>
         '你的手机处于${d.brightness > 60 ? "高亮度" : "省电模式"}状态，你的心情指数也类似',
-    (d) =>
+    (SensorData d) =>
         '检测到你在${d.timeHint}，接下来适合做创意的白日梦',
   ];
 
-  /// 生成预言（优先使用 ML 模型，不可用时回退到本地库）
+  /// 生成预言
+  /// 优先级：flutter_local_ai > MethodChannel (iOS MLX) > 本地回退
   Future<String> generateProphecy(SensorData sensor) async {
     _loading = true;
     notifyListeners();
 
     String prophecy;
 
-    // 尝试使用 MLX 模型
-    if (_modelLoaded && _isModelAvailable) {
+    // 1. 尝试 flutter_local_ai
+    if (_localAi.modelAvailable) {
+      final result = await _localAi.generate(
+        battery: sensor.battery ?? 50,
+        brightness: sensor.brightness,
+        steps: sensor.steps,
+        isMoving: sensor.isMoving,
+        ambientLight: sensor.ambientLight,
+        timeHint: sensor.timeHint,
+        dayPhase: sensor.dayPhase,
+      );
+      if (result != null) {
+        prophecy = result;
+      } else {
+        prophecy = _getFallbackProphecy(sensor);
+      }
+    }
+    // 2. 尝试旧的 MethodChannel（iOS MLX）
+    else if (_modelLoaded && _isModelAvailable) {
       try {
         prophecy = await _bridge.generateProphecy(
           battery: sensor.battery ?? 50,
@@ -348,8 +383,9 @@ class AiService extends ChangeNotifier {
         debugPrint('ML generation failed, using fallback: $e');
         prophecy = _getFallbackProphecy(sensor);
       }
-    } else {
-      // 本地回退
+    }
+    // 3. 本地回退
+    else {
       await Future.delayed(const Duration(milliseconds: 800));
       prophecy = _getFallbackProphecy(sensor);
     }
@@ -626,21 +662,25 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const Spacer(),
                     // 模型状态指示器
-                    if (aiSvc.isModelAvailable)
+                    if (aiSvc.localAi.modelAvailable || aiSvc.isModelAvailable)
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: aiSvc.modelLoaded
+                          color: (aiSvc.localAi.modelAvailable || aiSvc.modelLoaded)
                               ? AppTheme.secondary.withOpacity(0.2)
                               : const Color(0xFFF5F5F5),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          aiSvc.modelLoaded ? '🧠 本地AI' : '📡 本地',
+                          aiSvc.localAi.modelAvailable
+                              ? '🧠 AI'
+                              : aiSvc.modelLoaded
+                                  ? '🧠 MLX'
+                                  : '📡 本地',
                           style: TextStyle(
                             fontSize: 11,
-                            color: aiSvc.modelLoaded
+                            color: (aiSvc.localAi.modelAvailable || aiSvc.modelLoaded)
                                 ? AppTheme.textDark
                                 : AppTheme.textLight,
                           ),
@@ -1173,12 +1213,14 @@ class SettingsPage extends StatelessWidget {
             // ML 模型状态
             _settingCard(
               '🧠 AI 引擎',
-              ai.isModelAvailable
-                  ? (ai.modelLoaded ? '本地 MLX 模型' : '可用，未加载')
-                  : '本地回退模式',
-              ai.isModelAvailable && ai.modelLoaded,
+              ai.localAi.modelAvailable
+                  ? 'AI 已就绪 🧠'
+                  : ai.isModelAvailable
+                      ? (ai.modelLoaded ? 'MLX 模型' : '可用，未加载')
+                      : '本地回退模式',
+              ai.localAi.modelAvailable || (ai.isModelAvailable && ai.modelLoaded),
             ),
-            if (ai.isModelAvailable && !ai.modelLoaded)
+            if (!ai.localAi.modelAvailable && ai.isModelAvailable && !ai.modelLoaded)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: SizedBox(
@@ -1194,7 +1236,7 @@ class SettingsPage extends StatelessWidget {
                         borderRadius: BorderRadius.circular(20),
                       ),
                     ),
-                    child: const Text('📥 下载 AI 模型（约 200MB）'),
+                    child: const Text('📥 加载 AI 模型'),
                   ),
                 ),
               ),

@@ -40,6 +40,10 @@ kotlin {
     }
 }
 
+dependencies {
+    implementation("com.google.mlkit:genai-prompt:1.0.0-alpha1")
+}
+
 flutter {
     source = "../.."
 }

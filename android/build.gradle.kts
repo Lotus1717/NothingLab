@@ -17,17 +17,19 @@ subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
-subprojects {
-    project.evaluationDependsOn(":app")
-}
-
 // 部分 Flutter 插件（如 pedometer_2 compileSdk=33）依赖更高 SDK，会导致 checkReleaseAarMetadata 失败
 subprojects {
-    afterEvaluate {
-        extensions.findByType<BaseExtension>()?.apply {
-            compileSdkVersion(36)
+    listOf("com.android.library", "com.android.application").forEach { pluginId ->
+        pluginManager.withPlugin(pluginId) {
+            extensions.configure<BaseExtension>("android") {
+                compileSdkVersion(36)
+            }
         }
     }
+}
+
+subprojects {
+    project.evaluationDependsOn(":app")
 }
 
 tasks.register<Delete>("clean") {

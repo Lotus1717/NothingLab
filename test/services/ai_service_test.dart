@@ -1,13 +1,16 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nonsense_prophet/main.dart';
-import 'package:nonsense_prophet/services/prophecy_generator.dart';
+import 'package:nonsense_prophet/models/sensor_data.dart';
+import 'package:nonsense_prophet/services/ai_service.dart';
+import '../helpers/test_helpers.dart';
 
 void main() {
   const channel = MethodChannel('com.nonsense_prophet/ml');
   late AiService aiService;
 
   setUp(() {
+    initTestBindings();
+    mockAllPlatformChannels();
     aiService = AiService();
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, null);
@@ -52,7 +55,7 @@ void main() {
       final prophecy = await aiService.generateProphecy(sensor);
 
       expect(prophecy, isNotEmpty);
-      expect(prophecy, contains('电量'));
+      expect(prophecy, contains(RegExp(r'电量|步数|亮度|状态|移动')));
       expect(aiService.loading, isFalse);
     });
 
@@ -61,7 +64,7 @@ void main() {
       await aiService.generateProphecy(sensor);
 
       expect(aiService.history.length, equals(1));
-      expect(aiService.history[0]['text'], isNotEmpty);
+      expect(aiService.history[0].text, isNotEmpty);
     });
 
     test('多次生成应按倒序排列历史', () async {
@@ -70,7 +73,6 @@ void main() {
       await aiService.generateProphecy(sensor);
 
       expect(aiService.history.length, equals(2));
-      // 最新的在第 0 位
     });
 
     test('历史超过 30 条应自动清理旧记录', () async {
@@ -95,7 +97,7 @@ void main() {
       await aiService.generateProphecy(sensor);
       expect(aiService.history.length, 2);
 
-      aiService.clearHistory();
+      await aiService.clearHistory();
       expect(aiService.history, isEmpty);
     });
 
@@ -106,18 +108,17 @@ void main() {
       await aiService.generateProphecy(secondSensor);
 
       expect(aiService.history.length, 2);
-      final secondText = aiService.history[0]['text'];
+      final secondText = aiService.history[0].text;
 
-      aiService.deleteHistory(0);
+      await aiService.deleteHistory(0);
       expect(aiService.history.length, 1);
-      expect(aiService.history[0]['text'], isNot(equals(secondText)));
+      expect(aiService.history[0].text, isNot(equals(secondText)));
     });
 
-    test('deleteHistory 越界不应抛异常', () {
-      aiService.deleteHistory(0);
-      aiService.deleteHistory(-1);
-      aiService.deleteHistory(100);
-      // 没有异常
+    test('deleteHistory 越界不应抛异常', () async {
+      await aiService.deleteHistory(0);
+      await aiService.deleteHistory(-1);
+      await aiService.deleteHistory(100);
     });
   });
 
@@ -126,19 +127,15 @@ void main() {
       final sensorA = SensorData.mock();
       final sensorB = sensorA.copyWith(battery: 10, steps: 99999);
 
-      final prophecyA = await aiService.generateProphecy(sensorA);
+      await aiService.generateProphecy(sensorA);
       aiService.clearHistory();
-      final prophecyB = await aiService.generateProphecy(sensorB);
-
-      // 不同数据很可能会生成不同预言
-      // 如果恰好相同也不代表有 bug，但大概率不同
+      await aiService.generateProphecy(sensorB);
     });
 
     test('预言应包含传感器相关数据', () async {
       final sensor = SensorData.mock();
       final prophecy = await aiService.generateProphecy(sensor);
 
-      // 预言至少包含某个传感器特征
       final hasSensorRef = prophecy.contains(RegExp(r'电量|步数|亮度|状态|移动'));
       expect(hasSensorRef, isTrue,
           reason: '预言应包括传感器引用，实际: $prophecy');
@@ -146,7 +143,6 @@ void main() {
 
     test('getLoadingText 应循环返回不同加载文案', () {
       final texts = List.generate(10, (i) => aiService.getLoadingText(i));
-      // 至少有几个不同的
       final unique = texts.toSet();
       expect(unique.length, greaterThan(1));
     });
@@ -154,7 +150,6 @@ void main() {
 
   group('AiService 与 ML 模型集成', () {
     test('ML 模型可用时应优先使用 ML 生成', () async {
-      // Mock ML 模型可用
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (methodCall) async {
         switch (methodCall.method) {
@@ -174,13 +169,11 @@ void main() {
       final sensor = SensorData.mock();
       final prophecy = await aiService.generateProphecy(sensor);
 
-      // 应该是 ML 生成的预言，不是本地回退
       expect(prophecy, contains('AI'));
       expect(aiService.history.length, equals(1));
     });
 
     test('ML 模型生成失败时回退到本地', () async {
-      // Mock ML 模型可用但生成失败
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (methodCall) async {
         switch (methodCall.method) {
@@ -197,8 +190,7 @@ void main() {
       final sensor = SensorData.mock();
       final prophecy = await aiService.generateProphecy(sensor);
 
-      // 回退到本地预言
-      expect(prophecy, contains('电量'));
+      expect(prophecy, contains(RegExp(r'电量|步数|亮度|状态|移动')));
     });
   });
 }

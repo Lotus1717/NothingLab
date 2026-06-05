@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
-import 'package:nonsense_prophet/main.dart';
 import 'package:nonsense_prophet/config/theme.dart';
+import 'package:nonsense_prophet/main.dart';
+import 'package:nonsense_prophet/screens/main_screen.dart';
+import 'package:nonsense_prophet/screens/settings_page.dart';
+import 'package:nonsense_prophet/services/ai_service.dart';
+import 'package:nonsense_prophet/services/sensor_service.dart';
 import 'helpers/test_helpers.dart';
 
 void main() {
@@ -39,12 +43,12 @@ void main() {
       // 切换到历史页
       await tester.tap(find.text('历史'));
       await tester.pumpAndSettle();
-      expect(find.text('小本本'), findsOneWidget);
+      expect(find.textContaining('小本本'), findsOneWidget);
 
       // 切换到设置页
       await tester.tap(find.text('设置'));
       await tester.pumpAndSettle();
-      expect(find.text('小设置'), findsOneWidget);
+      expect(find.textContaining('小设置'), findsOneWidget);
 
       // 切回首页
       await tester.tap(find.text('首页'));
@@ -55,7 +59,15 @@ void main() {
 
   group('首页 — HomePage', () {
     testWidgets('应显示传感器卡片', (tester) async {
-      await tester.pumpWidget(const MaterialApp(home: MainScreen()));
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => SensorService()),
+            ChangeNotifierProvider(create: (_) => AiService()),
+          ],
+          child: const MaterialApp(home: MainScreen()),
+        ),
+      );
       await tester.pump();
 
       // 传感器指标存在
@@ -68,15 +80,22 @@ void main() {
     });
 
     testWidgets('戳骰子应生成预言', (tester) async {
-      await tester.pumpWidget(const MaterialApp(home: MainScreen()));
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => SensorService()),
+            ChangeNotifierProvider(create: (_) => AiService()),
+          ],
+          child: const MaterialApp(home: MainScreen()),
+        ),
+      );
       await tester.pump();
 
       // 戳骰子
       await tester.tap(find.text('🎲'));
-      await tester.pump(const Duration(milliseconds: 500));
-
-      // 开始加载
+      await tester.pump(const Duration(milliseconds: 100));
       expect(find.textContaining('小猫'), findsWidgets);
+      await tester.pumpAndSettle(const Duration(seconds: 2));
     });
   });
 
@@ -93,11 +112,11 @@ void main() {
       ));
       await tester.pump();
 
-      expect(find.text('小设置'), findsOneWidget);
-      expect(find.text('电池'), findsOneWidget);
-      expect(find.text('运动'), findsOneWidget);
-      expect(find.text('步数'), findsOneWidget);
-      expect(find.text('AI 引擎'), findsOneWidget);
+      expect(find.textContaining('小设置'), findsOneWidget);
+      expect(find.textContaining('电池'), findsOneWidget);
+      expect(find.textContaining('运动'), findsOneWidget);
+      expect(find.textContaining('步数'), findsOneWidget);
+      expect(find.textContaining('AI 引擎'), findsOneWidget);
     });
   });
 

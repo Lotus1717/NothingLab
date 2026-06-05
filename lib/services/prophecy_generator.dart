@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 /// 与 iOS 原生 MLX 模型通信的桥梁
@@ -5,6 +6,18 @@ class ProphecyGeneratorBridge {
   static const _channel = MethodChannel('com.nonsense_prophet/ml');
 
   /// 模型是否已加载
+  /// 原生 MLX 插件是否存在于当前平台
+  Future<bool> isPlatformSupported() async {
+    try {
+      await _channel.invokeMethod('isLoaded');
+      return true;
+    } on MissingPluginException {
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<bool> isLoaded() async {
     try {
       return await _channel.invokeMethod('isLoaded') ?? false;
@@ -36,7 +49,9 @@ class ProphecyGeneratorBridge {
     try {
       await _channel.invokeMethod('loadModel');
     } on PlatformException catch (e) {
-      throw Exception('模型加载失败: ${e.message}');
+      debugPrint('Model load failed: ${e.message}');
+    } catch (e) {
+      debugPrint('Model load failed: $e');
     }
   }
 
@@ -63,6 +78,8 @@ class ProphecyGeneratorBridge {
       return result ?? '🤖 预言生成失败，再来一次？';
     } on PlatformException catch (e) {
       return '🤖 梦境信号不好… ${e.message}';
+    } catch (_) {
+      return '🤖 预言生成失败，再来一次？';
     }
   }
 

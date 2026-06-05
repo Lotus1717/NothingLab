@@ -14,7 +14,6 @@ dependencies:
   screen_brightness: ^1.0.1
   provider: ^6.1.2
   shared_preferences: ^2.3.2
-  http: ^1.2.2
   permission_handler: ^11.3.1
   flutter_local_ai: ^0.0.6
 dev_dependencies:

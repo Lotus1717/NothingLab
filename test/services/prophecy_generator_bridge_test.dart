@@ -2,14 +2,17 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nonsense_prophet/services/prophecy_generator.dart';
 
+import '../helpers/test_helpers.dart';
+
 void main() {
   const channel = MethodChannel('com.nonsense_prophet/ml');
   late ProphecyGeneratorBridge bridge;
 
   setUp(() {
+    initTestBindings();
     bridge = ProphecyGeneratorBridge();
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, null); // 清除 mock
+        .setMockMethodCallHandler(channel, null);
   });
 
   tearDown(() {
@@ -74,7 +77,9 @@ void main() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (methodCall) async {
         if (methodCall.method == 'generateProphecy') {
-          capturedArgs = methodCall.arguments as Map<String, dynamic>;
+          capturedArgs = Map<String, dynamic>.from(
+            methodCall.arguments as Map<dynamic, dynamic>,
+          );
           return '测试预言';
         }
         return null;

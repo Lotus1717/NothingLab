@@ -1,10 +1,25 @@
-/// 测试辅助工具
-
 import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+void initTestBindings() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  SharedPreferences.setMockInitialValues({});
+}
 
 /// Mock 所有传感器相关的 MethodChannel，防止测试时调用真实平台
 void mockAllPlatformChannels() {
-  // battery_plus
+  initTestBindings();
+
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(
+    const MethodChannel('flutter_local_ai'),
+    (methodCall) async {
+      if (methodCall.method == 'isAvailable') return false;
+      return null;
+    },
+  );
+
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMethodCallHandler(
     const MethodChannel('dev.flutter.pigeon.battery_plus'),
@@ -20,16 +35,14 @@ void mockAllPlatformChannels() {
     },
   );
 
-  // sensors_plus (accelerometer)
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMethodCallHandler(
     const MethodChannel('dev.flutter.pigeon.sensors_plus'),
     (methodCall) async {
-      return null; // 静默处理
+      return null;
     },
   );
 
-  // pedometer_2 通道 （根据 pub 包版本可能不同）
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMethodCallHandler(
     const MethodChannel('pedometer_2'),
@@ -38,18 +51,22 @@ void mockAllPlatformChannels() {
     },
   );
 
-  // 通用 fallback
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMethodCallHandler(
     const MethodChannel('com.nonsense_prophet/ml'),
     (methodCall) async {
-      return null;
+      throw MissingPluginException('no ml plugin');
     },
   );
 }
 
 /// 清除所有 mock
 void clearAllMocks() {
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(
+    const MethodChannel('flutter_local_ai'),
+    null,
+  );
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMethodCallHandler(
     const MethodChannel('dev.flutter.pigeon.battery_plus'),

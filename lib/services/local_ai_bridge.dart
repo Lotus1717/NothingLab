@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_ai/flutter_local_ai.dart';
 
@@ -62,11 +61,12 @@ class LocalAiBridge extends ChangeNotifier {
     );
 
     try {
-      final config = GenerationConfig(
+      const config = GenerationConfig(
         maxTokens: 80,
         temperature: 0.9,
       );
-      final AiResponse response = await _ai.generate(prompt, config: config);
+      final AiResponse response =
+          await _ai.generateText(prompt: prompt, config: config);
       final text = response.text.trim();
       if (text.isEmpty) return null;
       return text;

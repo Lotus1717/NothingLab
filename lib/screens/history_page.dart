@@ -218,7 +218,7 @@ class _HistoryItem extends StatelessWidget {
                 if (item.battery != null)
                   StatusChip(
                     label: '${item.battery}%',
-                    icon: Icons.battery_charge_full_rounded,
+                    icon: Icons.battery_full_rounded,
                     active: true,
                   ),
                 StatusChip(

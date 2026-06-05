@@ -99,7 +99,7 @@ class _SettingsPageState extends State<SettingsPage> {
               const SizedBox(height: 20),
               const SectionHeader(title: '传感器状态'),
               _SettingRow(
-                icon: Icons.battery_charge_full_rounded,
+                icon: Icons.battery_full_rounded,
                 title: '电池',
                 value: sensor.isRealBattery ? '真实数据' : '模拟数据',
                 isReal: sensor.isRealBattery,
@@ -143,9 +143,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 value: '点击清空',
                 isReal: false,
                 danger: true,
-                onTap: () {
-                  _confirmClearAll(context);
-                },
+                onTap: _confirmClearAll,
               ),
               const SizedBox(height: 28),
               Center(

@@ -91,10 +91,7 @@ class _ProphecyCardState extends State<ProphecyCard>
   }
 
   void _share() {
-    final text = widget.prophecy;
-    SharePlus.instance.share(
-      ShareParams(text: '废话预言家说：$text'),
-    );
+    Share.share('废话预言家说：${widget.prophecy}');
   }
 
   void _copy() {

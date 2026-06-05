@@ -28,7 +28,7 @@ class SensorCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _SensorTile(
-                  icon: Icons.battery_charge_full_rounded,
+                  icon: Icons.battery_full_rounded,
                   label: '电量',
                   value: '${sensor.battery ?? "--"}%',
                 ),
@@ -79,7 +79,7 @@ class SensorCard extends StatelessWidget {
               ),
               StatusChip(
                 label: sensor.isRealBattery ? '电池' : '模拟',
-                icon: Icons.battery_charge_full_rounded,
+                icon: Icons.battery_full_rounded,
                 active: sensor.isRealBattery,
               ),
               const SizedBox(width: 6),

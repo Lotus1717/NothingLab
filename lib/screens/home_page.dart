@@ -85,7 +85,7 @@ class _HomePageState extends State<HomePage> {
                           )
                         else
                           Text(
-                            '[ 戳一下，今日神谕 ]',
+                            '[ 戳一下 ]',
                             style: AppTheme.caption(context).copyWith(
                               fontSize: 14,
                               letterSpacing: 0.3,
@@ -160,10 +160,9 @@ class _HomeHero extends StatelessWidget {
               Text('废话预言家', style: AppTheme.displayTitle(context)),
               const SizedBox(height: 4),
               Text(
-                '今日神谕 · 温暖废话一枚',
+                '轻触骰子，揭晓神谕',
                 style: AppTheme.caption(context).copyWith(
-                  color: AppTheme.oracleGold,
-                  fontStyle: FontStyle.italic,
+                  color: AppTheme.textMuted,
                 ),
               ),
             ],

@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../config/theme.dart';
 import 'app_card.dart';
@@ -23,29 +25,22 @@ class _ProphecyCardState extends State<ProphecyCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _revealCtrl;
   late Animation<double> _fade;
-  late Animation<Offset> _slide;
 
   String _displayedText = '';
   Timer? _typeTimer;
   int _charIndex = 0;
-  bool _cardVisible = false;
+  bool _typingDone = false;
 
   @override
   void initState() {
     super.initState();
     _revealCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 300),
     );
     _fade = CurvedAnimation(parent: _revealCtrl, curve: Curves.easeOut);
-    _slide = Tween<Offset>(
-      begin: const Offset(0, 0.10),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _revealCtrl, curve: Curves.easeOutCubic));
-
     _revealCtrl.addStatusListener((status) {
-      if (status == AnimationStatus.completed && !_cardVisible) {
-        _cardVisible = true;
+      if (status == AnimationStatus.completed && !_typingDone) {
         _startTyping();
       }
     });
@@ -69,7 +64,9 @@ class _ProphecyCardState extends State<ProphecyCard>
         _charIndex++;
         setState(() => _displayedText = text.substring(0, _charIndex));
       } else {
+        _typingDone = true;
         timer.cancel();
+        setState(() {});
       }
     });
   }
@@ -79,7 +76,7 @@ class _ProphecyCardState extends State<ProphecyCard>
     super.didUpdateWidget(old);
     if (old.prophecy != widget.prophecy) {
       _typeTimer?.cancel();
-      _cardVisible = false;
+      _typingDone = false;
       _displayedText = '';
       _charIndex = 0;
       _revealCtrl.forward(from: 0);
@@ -93,59 +90,97 @@ class _ProphecyCardState extends State<ProphecyCard>
     super.dispose();
   }
 
+  void _share() {
+    final text = widget.prophecy;
+    SharePlus.instance.share(
+      ShareParams(text: '废话预言家说：$text'),
+    );
+  }
+
+  void _copy() {
+    Clipboard.setData(ClipboardData(text: widget.prophecy));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('已复制到剪贴板')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: _fade,
-      child: SlideTransition(
-        position: _slide,
-        child: AppCard.oracle(
-          padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-          child: Column(
-            children: [
-              Text(
-                '「',
-                style: AppTheme.displayTitle(context).copyWith(
-                  fontSize: 36,
-                  color: AppTheme.oracleGold.withValues(alpha: 0.7),
-                  height: 0.6,
+      child: AppCard.oracle(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.auto_awesome_rounded,
+                    size: 16, color: AppTheme.oracleGold),
+                const SizedBox(width: 6),
+                Text(
+                  '今日神谕 · 温暖废话一枚',
+                  style: AppTheme.sectionHeader(context).copyWith(
+                    color: AppTheme.oracleGold,
+                    fontSize: 12,
+                    letterSpacing: 0.3,
+                  ),
                 ),
-              ),
-              Text(
+              ],
+            ),
+            const SizedBox(height: 20),
+            Center(
+              child: Text(
                 _displayedText,
                 textAlign: TextAlign.center,
                 style: AppTheme.prophecyBody(context),
               ),
-              if (_charIndex >= widget.prophecy.length)
-                Text(
-                  '」',
-                  style: AppTheme.displayTitle(context).copyWith(
-                    fontSize: 36,
-                    color: AppTheme.oracleGold.withValues(alpha: 0.7),
-                    height: 0.6,
+            ),
+            if (_typingDone) ...[
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _ActionButton(
+                    icon: Icons.refresh_rounded,
+                    label: '再来一条',
+                    primary: true,
+                    onPressed: widget.onRefresh,
                   ),
-                ),
-              const SizedBox(height: 12),
-              if (_charIndex >= widget.prophecy.length)
-                _OracleButton(
-                  label: '🔄 再来一条',
-                  primary: true,
-                  onPressed: widget.onRefresh,
-                ),
+                  const SizedBox(width: 10),
+                  _ActionButton(
+                    icon: Icons.content_copy_rounded,
+                    label: '复制',
+                    primary: false,
+                    onPressed: _copy,
+                  ),
+                  const SizedBox(width: 10),
+                  _ActionButton(
+                    icon: Icons.share_rounded,
+                    label: '分享',
+                    primary: false,
+                    onPressed: _share,
+                  ),
+                ],
+              ),
             ],
-          ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _OracleButton extends StatelessWidget {
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
   final String label;
   final bool primary;
   final VoidCallback onPressed;
 
-  const _OracleButton({
+  const _ActionButton({
+    required this.icon,
     required this.label,
     required this.primary,
     required this.onPressed,
@@ -157,7 +192,7 @@ class _OracleButton extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onPressed,
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(24),
         child: Ink(
           decoration: BoxDecoration(
             gradient: primary
@@ -166,26 +201,35 @@ class _OracleButton extends StatelessWidget {
                   )
                 : null,
             color: primary ? null : const Color(0xFFF4F0EC),
-            borderRadius: BorderRadius.circular(30),
+            borderRadius: BorderRadius.circular(24),
             boxShadow: primary
                 ? [
                     BoxShadow(
-                      color: AppTheme.primaryDark.withValues(alpha: 0.25),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+                      color: AppTheme.primaryDark.withValues(alpha: 0.2),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
                     ),
                   ]
                 : null,
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-            child: Text(
-              label,
-              style: AppTheme.bodyMedium(context).copyWith(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: primary ? Colors.white : AppTheme.textDark,
-              ),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon,
+                    size: 16,
+                    color: primary ? Colors.white : AppTheme.textDark),
+                const SizedBox(width: 5),
+                Text(
+                  label,
+                  style: AppTheme.caption(context).copyWith(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: primary ? Colors.white : AppTheme.textDark,
+                  ),
+                ),
+              ],
             ),
           ),
         ),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../config/theme.dart';
 import '../models/sensor_data.dart';
 import 'app_card.dart';
+import 'status_chip.dart';
 
 class SensorCard extends StatelessWidget {
   final SensorData sensor;
@@ -13,72 +14,125 @@ class SensorCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppMintCard(
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(
+            '此刻感应',
+            style: AppTheme.sectionHeader(context).copyWith(
+              color: AppTheme.secondary,
+              letterSpacing: 0.4,
+            ),
+          ),
+          const SizedBox(height: 14),
           Row(
             children: [
               Expanded(
-                  child: _item('🔋', '电量', '${sensor.battery ?? "--"}%')),
-              Expanded(child: _item('☀️', '亮度', '${sensor.brightness}%')),
+                child: _SensorTile(
+                  icon: '🔋',
+                  label: '电量',
+                  value: '${sensor.battery ?? "--"}%',
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _SensorTile(
+                  icon: '☀️',
+                  label: '亮度',
+                  value: '${sensor.brightness}%',
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: _item('🚶', '步数', '${sensor.steps}')),
               Expanded(
-                  child:
-                      _item('📳', '状态', sensor.isMoving ? '移动中' : '静止')),
+                child: _SensorTile(
+                  icon: '🚶',
+                  label: '步数',
+                  value: '${sensor.steps}',
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _SensorTile(
+                  icon: '📳',
+                  label: '状态',
+                  value: sensor.isMoving ? '移动中' : '静止',
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.only(top: 8),
-            decoration: const BoxDecoration(
-              border: Border(
-                top: BorderSide(color: Color(0x11000000), width: 1),
-              ),
-            ),
-            child: Row(
-              children: [
-                Text(
+          const SizedBox(height: 14),
+          Divider(
+            height: 1,
+            color: AppTheme.textDark.withValues(alpha: 0.06),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
                   '${sensor.dayPhase} · ${sensor.timeHint}',
-                  style: const TextStyle(fontSize: 12, color: AppTheme.textLight),
+                  style: AppTheme.caption(context),
                 ),
-                const Spacer(),
-                Text(
-                  sensor.isRealBattery ? '🔋真' : '🔋模',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: sensor.isRealBattery
-                        ? AppTheme.secondary
-                        : AppTheme.textLight,
-                  ),
-                ),
-              ],
-            ),
+              ),
+              StatusChip(
+                label: sensor.isRealBattery ? '🔋 真' : '🔋 模',
+                active: sensor.isRealBattery,
+              ),
+              const SizedBox(width: 6),
+              StatusChip(
+                label: sensor.isRealMotion ? '📳 真' : '📳 模',
+                active: sensor.isRealMotion,
+              ),
+            ],
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _item(String emoji, String label, String value) {
-    return Row(
-      children: [
-        Text(emoji, style: const TextStyle(fontSize: 18)),
-        const SizedBox(width: 7),
-        Text(label,
-            style: const TextStyle(fontSize: 13, color: AppTheme.textLight)),
-        const Spacer(),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: AppTheme.textDark,
+class _SensorTile extends StatelessWidget {
+  final String icon;
+  final String label;
+  final String value;
+
+  const _SensorTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(icon, style: const TextStyle(fontSize: 18)),
+              const SizedBox(width: 6),
+              Text(label, style: AppTheme.caption(context)),
+            ],
           ),
-        ),
-      ],
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: AppTheme.bodyMedium(context).copyWith(
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

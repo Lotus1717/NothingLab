@@ -5,89 +5,160 @@ import '../config/theme.dart';
 import '../models/prophecy_record.dart';
 import '../services/ai_service.dart';
 import '../widgets/app_card.dart';
+import '../widgets/oracle_background.dart';
+import '../widgets/oracle_empty_state.dart';
+import '../widgets/section_header.dart';
+import '../widgets/status_chip.dart';
 
 class HistoryPage extends StatelessWidget {
   const HistoryPage({super.key});
-
-  String _fmt(int ts) {
-    final diff = DateTime.now().millisecondsSinceEpoch - ts;
-    if (diff < 60000) return '刚刚';
-    if (diff < 3600000) return '${(diff / 60000).floor()}分钟前';
-    final d = DateTime.fromMillisecondsSinceEpoch(ts);
-    return '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
-  }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<AiService>(
       builder: (context, ai, _) {
-        return SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                child: Row(
-                  children: [
-                    const Text(
-                      '📋 小本本',
-                      style: TextStyle(
-                        fontSize: 19,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.textDark,
-                      ),
-                    ),
-                    const Spacer(),
-                    GestureDetector(
-                      onTap: () => ai.clearHistory(),
-                      child: const Text('🗑️', style: TextStyle(fontSize: 22)),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: ai.history.isEmpty
-                    ? const Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text('🍃', style: TextStyle(fontSize: 52)),
-                            SizedBox(height: 16),
-                            Text('暂无记录',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  color: AppTheme.textLight,
-                                )),
-                            SizedBox(height: 6),
-                            Text(
-                              '开始你的第一条预言吧～',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: AppTheme.textLight,
+        return OracleBackground(
+          child: SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                  child: Row(
+                    children: [
+                      Text('📋 小本本', style: AppTheme.pageTitle(context)),
+                      const Spacer(),
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            ai.clearHistory();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('历史已清空'),
+                                duration: Duration(seconds: 2),
                               ),
-                            ),
-                          ],
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: const Padding(
+                            padding: EdgeInsets.all(8),
+                            child: Text('🗑️', style: TextStyle(fontSize: 22)),
+                          ),
                         ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        itemCount: ai.history.length,
-                        itemBuilder: (ctx, i) {
-                          final item = ai.history[i];
-                          return _HistoryItem(
-                            item: item,
-                            timeLabel: _fmt(item.time),
-                            onDoubleTap: () => ai.deleteHistory(i),
-                          );
-                        },
                       ),
-              ),
-            ],
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: ai.history.isEmpty
+                      ? Center(
+                          child: OracleEmptyState(
+                            emoji: '🍃',
+                            title: '暂无记录',
+                            subtitle: '摇一摇骰子，开启第一条神谕',
+                          ),
+                        )
+                      : _HistoryList(history: ai.history, ai: ai),
+                ),
+              ],
+            ),
           ),
         );
       },
     );
   }
+}
+
+class _HistoryList extends StatelessWidget {
+  final List<ProphecyRecord> history;
+  final AiService ai;
+
+  const _HistoryList({required this.history, required this.ai});
+
+  @override
+  Widget build(BuildContext context) {
+    final groups = _groupByDate(history);
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+      itemCount: groups.length,
+      itemBuilder: (context, gi) {
+        final group = groups[gi];
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeader(title: group.label),
+            ...group.entries.map((entry) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _HistoryItem(
+                  item: entry.record,
+                  timeLabel: _formatTime(entry.record.time),
+                  onDoubleTap: () => ai.deleteHistory(entry.index),
+                ),
+              );
+            }),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _HistoryEntry {
+  final int index;
+  final ProphecyRecord record;
+
+  const _HistoryEntry({required this.index, required this.record});
+}
+
+class _DateGroup {
+  final String label;
+  final List<_HistoryEntry> entries;
+
+  const _DateGroup({required this.label, required this.entries});
+}
+
+List<_DateGroup> _groupByDate(List<ProphecyRecord> history) {
+  if (history.isEmpty) return [];
+
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final yesterday = today.subtract(const Duration(days: 1));
+
+  final groups = <String, List<_HistoryEntry>>{};
+  final order = <String>[];
+
+  for (var i = 0; i < history.length; i++) {
+    final item = history[i];
+    final d = DateTime.fromMillisecondsSinceEpoch(item.time);
+    final day = DateTime(d.year, d.month, d.day);
+    final String label;
+    if (day == today) {
+      label = '今天';
+    } else if (day == yesterday) {
+      label = '昨天';
+    } else {
+      label = '${d.month}月${d.day}日';
+    }
+    if (!groups.containsKey(label)) {
+      groups[label] = [];
+      order.add(label);
+    }
+    groups[label]!.add(_HistoryEntry(index: i, record: item));
+  }
+
+  return order
+      .map((label) => _DateGroup(label: label, entries: groups[label]!))
+      .toList();
+}
+
+String _formatTime(int ts) {
+  final diff = DateTime.now().millisecondsSinceEpoch - ts;
+  if (diff < 60000) return '刚刚';
+  if (diff < 3600000) return '${(diff / 60000).floor()}分钟前';
+  final d = DateTime.fromMillisecondsSinceEpoch(ts);
+  return '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 }
 
 class _HistoryItem extends StatelessWidget {
@@ -106,71 +177,60 @@ class _HistoryItem extends StatelessWidget {
     return GestureDetector(
       onDoubleTap: onDoubleTap,
       child: AppCard(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Text(
-                  timeLabel,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.textLight,
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppTheme.oracleGold,
                   ),
                 ),
+                const SizedBox(width: 8),
+                Text(timeLabel, style: AppTheme.caption(context)),
                 const Spacer(),
                 const Text('✨', style: TextStyle(fontSize: 14)),
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 10),
             Wrap(
-              spacing: 8,
+              spacing: 6,
+              runSpacing: 6,
               children: [
                 if (item.battery != null)
-                  _chip('🔋', '${item.battery}%'),
-                _chip('🚶', '${item.steps}'),
+                  StatusChip(
+                    label: '🔋 ${item.battery}%',
+                    active: true,
+                  ),
+                StatusChip(label: '🚶 ${item.steps}', active: true),
+                StatusChip(
+                  label: item.isMoving ? '📳 动' : '📳 静',
+                  active: item.isMoving,
+                ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Text(
-              '"${item.text}"',
-              style: const TextStyle(
-                fontSize: 15,
-                color: AppTheme.textDark,
-                height: 1.55,
-              ),
+              item.text,
+              style: AppTheme.bodyMedium(context).copyWith(height: 1.55),
             ),
-            const SizedBox(height: 6),
-            const Align(
+            const SizedBox(height: 8),
+            Align(
               alignment: Alignment.centerRight,
               child: Text(
                 '双击删除',
-                style: TextStyle(
+                style: AppTheme.caption(context).copyWith(
+                  color: AppTheme.textLight,
                   fontSize: 11,
-                  color: Color(0xFFCCCCCC),
                 ),
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _chip(String emoji, String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: AppTheme.bgMint,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        '$emoji$text',
-        style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: AppTheme.secondary,
         ),
       ),
     );

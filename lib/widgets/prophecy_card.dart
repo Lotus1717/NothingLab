@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../config/theme.dart';
 import 'app_card.dart';
 
-class ProphecyCard extends StatelessWidget {
+class ProphecyCard extends StatefulWidget {
   final String prophecy;
   final VoidCallback onRefresh;
 
@@ -14,59 +14,136 @@ class ProphecyCard extends StatelessWidget {
   });
 
   @override
+  State<ProphecyCard> createState() => _ProphecyCardState();
+}
+
+class _ProphecyCardState extends State<ProphecyCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _revealCtrl;
+  late Animation<double> _fade;
+  late Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _revealCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 520),
+    );
+    _fade = CurvedAnimation(parent: _revealCtrl, curve: Curves.easeOut);
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.12),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _revealCtrl, curve: Curves.easeOutCubic));
+    _revealCtrl.forward();
+  }
+
+  @override
+  void didUpdateWidget(ProphecyCard old) {
+    super.didUpdateWidget(old);
+    if (old.prophecy != widget.prophecy) {
+      _revealCtrl.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _revealCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 450),
-      curve: Curves.elasticOut,
-      builder: (context, v, child) => Transform.scale(
-        scale: 0.92 + 0.08 * v,
-        child: Opacity(opacity: v, child: child),
-      ),
-      child: AppCard(
-        padding: const EdgeInsets.all(24),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppTheme.primary, width: 2),
-        child: Column(children: [
-          Text(
-            '"$prophecy"',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 19,
-              color: AppTheme.textDark,
-              height: 1.6,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 20),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            alignment: WrapAlignment.center,
+    return FadeTransition(
+      opacity: _fade,
+      child: SlideTransition(
+        position: _slide,
+        child: AppCard.oracle(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+          child: Column(
             children: [
-              _btn('🔄 再来一条', onRefresh, primary: true),
+              Text(
+                '「',
+                style: AppTheme.displayTitle(context).copyWith(
+                  fontSize: 36,
+                  color: AppTheme.oracleGold.withValues(alpha: 0.7),
+                  height: 0.6,
+                ),
+              ),
+              Text(
+                widget.prophecy,
+                textAlign: TextAlign.center,
+                style: AppTheme.prophecyBody(context),
+              ),
+              Text(
+                '」',
+                style: AppTheme.displayTitle(context).copyWith(
+                  fontSize: 36,
+                  color: AppTheme.oracleGold.withValues(alpha: 0.7),
+                  height: 0.6,
+                ),
+              ),
+              const SizedBox(height: 20),
+              _OracleButton(
+                label: '🔄 再来一条',
+                primary: true,
+                onPressed: widget.onRefresh,
+              ),
             ],
           ),
-        ]),
+        ),
       ),
     );
   }
+}
 
-  Widget _btn(String text, VoidCallback onPressed, {bool primary = false}) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
-        decoration: BoxDecoration(
-          color: primary ? AppTheme.primary : const Color(0xFFF4F4F4),
-          borderRadius: BorderRadius.circular(30),
-        ),
-        child: Text(
-          text,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: primary ? Colors.white : AppTheme.textDark,
+class _OracleButton extends StatelessWidget {
+  final String label;
+  final bool primary;
+  final VoidCallback onPressed;
+
+  const _OracleButton({
+    required this.label,
+    required this.primary,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(30),
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: primary
+                ? const LinearGradient(
+                    colors: [Color(0xFFFFB7B2), Color(0xFFFF8A7A)],
+                  )
+                : null,
+            color: primary ? null : const Color(0xFFF4F0EC),
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: primary
+                ? [
+                    BoxShadow(
+                      color: AppTheme.primaryDark.withValues(alpha: 0.25),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+            child: Text(
+              label,
+              style: AppTheme.bodyMedium(context).copyWith(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: primary ? Colors.white : AppTheme.textDark,
+              ),
+            ),
           ),
         ),
       ),

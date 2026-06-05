@@ -135,7 +135,7 @@ void main() {
     test('lightTheme 应正确引用颜色', () {
       final theme = AppTheme.lightTheme;
       expect(theme.scaffoldBackgroundColor, AppTheme.bg);
-      expect(theme.primaryColor, AppTheme.primary);
+      expect(theme.primaryColor, AppTheme.primaryDark);
     });
   });
 }

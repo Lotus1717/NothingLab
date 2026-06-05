@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../widgets/oracle_bottom_nav.dart';
 import 'history_page.dart';
 import 'home_page.dart';
 import 'settings_page.dart';
@@ -18,19 +19,14 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _pages[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
+      backgroundColor: Colors.transparent,
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _pages,
+      ),
+      bottomNavigationBar: OracleBottomNav(
         currentIndex: _currentIndex,
         onTap: (i) => setState(() => _currentIndex = i),
-        selectedItemColor: const Color(0xFFFF8A7A),
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: '首页'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.list_alt_rounded), label: '历史'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.settings_rounded), label: '设置'),
-        ],
       ),
     );
   }

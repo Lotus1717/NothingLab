@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../config/theme.dart';
 import '../services/ai_service.dart';
+import '../widgets/oracle_background.dart';
+import '../widgets/oracle_loading.dart';
 import 'main_screen.dart';
 
 class AppRoot extends StatefulWidget {
@@ -32,8 +35,24 @@ class _AppRootState extends State<AppRoot> {
   @override
   Widget build(BuildContext context) {
     if (_checkingModel) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        body: OracleBackground(
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('🐣', style: TextStyle(fontSize: 48)),
+                const SizedBox(height: 16),
+                Text(
+                  '废话预言家',
+                  style: AppTheme.displayTitle(context),
+                ),
+                const SizedBox(height: 24),
+                const OracleLoading(message: '唤醒神谕引擎…'),
+              ],
+            ),
+          ),
+        ),
       );
     }
 

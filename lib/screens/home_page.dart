@@ -7,8 +7,12 @@ import '../config/theme.dart';
 import '../services/ai_service.dart';
 import '../services/sensor_service.dart';
 import '../widgets/dice_button.dart';
+import '../widgets/oracle_background.dart';
+import '../widgets/oracle_empty_state.dart';
+import '../widgets/oracle_loading.dart';
 import '../widgets/prophecy_card.dart';
 import '../widgets/sensor_card.dart';
+import '../widgets/status_chip.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -51,104 +55,131 @@ class _HomePageState extends State<HomePage> {
     return Consumer2<SensorService, AiService>(
       builder: (context, sensorSvc, aiSvc, _) {
         final s = sensorSvc.data;
-        return SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    const Text('🐣', style: TextStyle(fontSize: 28)),
-                    const SizedBox(width: 8),
-                    const Text(
-                      '废话预言家',
-                      style: TextStyle(
-                        fontSize: 19,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.textDark,
-                      ),
-                    ),
-                    const Spacer(),
-                    if (aiSvc.localAi.modelAvailable || aiSvc.isModelAvailable)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: (aiSvc.localAi.modelAvailable ||
-                                  aiSvc.modelLoaded)
-                              ? AppTheme.secondary.withValues(alpha: 0.2)
-                              : const Color(0xFFF5F5F5),
-                          borderRadius: BorderRadius.circular(20),
+        final hasProphecy =
+            aiSvc.currentProphecy.isNotEmpty && !aiSvc.loading;
+
+        return OracleBackground(
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 8),
+                  _HomeHero(aiSvc: aiSvc, onRefreshSensors: () => sensorSvc.init()),
+                  const SizedBox(height: 20),
+                  SensorCard(sensor: s),
+                  const SizedBox(height: 28),
+                  Center(
+                    child: Column(
+                      children: [
+                        DiceButton(
+                          pressed: _dicePressed,
+                          loading: aiSvc.loading,
+                          onPressed: _onDicePressed,
                         ),
-                        child: Text(
-                          aiSvc.localAi.modelAvailable
-                              ? '🧠 AI'
-                              : aiSvc.modelLoaded
-                                  ? '🧠 MLX'
-                                  : '📡 本地',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: (aiSvc.localAi.modelAvailable ||
-                                    aiSvc.modelLoaded)
-                                ? AppTheme.textDark
-                                : AppTheme.textLight,
+                        const SizedBox(height: 16),
+                        if (aiSvc.loading)
+                          OracleLoading(
+                            message: aiSvc.getLoadingText(_loadingStep),
+                          )
+                        else
+                          Text(
+                            '[ 戳一下，今日神谕 ]',
+                            style: AppTheme.caption(context).copyWith(
+                              fontSize: 14,
+                              letterSpacing: 0.3,
+                            ),
                           ),
-                        ),
-                      ),
-                    IconButton(
-                      icon: const Icon(Icons.refresh_rounded, size: 24),
-                      onPressed: () => sensorSvc.init(),
-                      color: AppTheme.textLight,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                SensorCard(sensor: s),
-                const SizedBox(height: 24),
-                Center(
-                  child: Column(
-                    children: [
-                      DiceButton(
-                        pressed: _dicePressed,
-                        loading: aiSvc.loading,
-                        onPressed: _onDicePressed,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        aiSvc.loading
-                            ? aiSvc.getLoadingText(_loadingStep)
-                            : '[ 戳一下 ]',
-                        style: const TextStyle(
-                            fontSize: 15, color: AppTheme.textLight),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 18),
-                if (aiSvc.currentProphecy.isNotEmpty && !aiSvc.loading)
-                  ProphecyCard(
-                    prophecy: aiSvc.currentProphecy,
-                    onRefresh: _onDicePressed,
-                  ),
-                const SizedBox(height: 16),
-                const Center(
-                  child: Text(
-                    '⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯',
-                    style: TextStyle(
-                      color: Color(0xFFDDDDDD),
-                      fontSize: 13,
-                      letterSpacing: 3,
+                      ],
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
-              ],
+                  const SizedBox(height: 24),
+                  if (hasProphecy)
+                    ProphecyCard(
+                      prophecy: aiSvc.currentProphecy,
+                      onRefresh: _onDicePressed,
+                    )
+                  else if (!aiSvc.loading)
+                    const OracleEmptyState(
+                      emoji: '🔮',
+                      title: '神谕尚未降临',
+                      subtitle: '轻触骰子，让传感器与命运开个玩笑',
+                    ),
+                  const SizedBox(height: 24),
+                  Center(
+                    child: Text(
+                      '· · · · · · · · · · · ·',
+                      style: AppTheme.caption(context).copyWith(
+                        color: AppTheme.textLight,
+                        letterSpacing: 4,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
             ),
           ),
         );
       },
+    );
+  }
+}
+
+class _HomeHero extends StatelessWidget {
+  final AiService aiSvc;
+  final VoidCallback onRefreshSensors;
+
+  const _HomeHero({
+    required this.aiSvc,
+    required this.onRefreshSensors,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('🐣', style: TextStyle(fontSize: 32)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('废话预言家', style: AppTheme.displayTitle(context)),
+              const SizedBox(height: 4),
+              Text(
+                '今日神谕 · 温暖废话一枚',
+                style: AppTheme.caption(context).copyWith(
+                  color: AppTheme.oracleGold,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (aiSvc.localAi.modelAvailable ||
+            aiSvc.isModelAvailable)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: StatusChip(
+              label: aiSvc.localAi.modelAvailable
+                  ? '🧠 AI'
+                  : aiSvc.modelLoaded
+                      ? '🧠 MLX'
+                      : '📡 本地',
+              active: aiSvc.localAi.modelAvailable || aiSvc.modelLoaded,
+              activeColor: AppTheme.secondary,
+            ),
+          ),
+        IconButton(
+          icon: const Icon(Icons.refresh_rounded, size: 24),
+          onPressed: onRefreshSensors,
+          color: AppTheme.textMuted,
+          tooltip: '刷新传感器',
+        ),
+      ],
     );
   }
 }

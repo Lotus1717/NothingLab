@@ -12,7 +12,6 @@ import '../widgets/oracle_empty_state.dart';
 import '../widgets/oracle_loading.dart';
 import '../widgets/prophecy_card.dart';
 import '../widgets/sensor_card.dart';
-import '../widgets/status_chip.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -67,9 +66,9 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   const SizedBox(height: 8),
                   _HomeHero(aiSvc: aiSvc, onRefreshSensors: () => sensorSvc.init()),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
                   SensorCard(sensor: s),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 32),
                   Center(
                     child: Column(
                       children: [

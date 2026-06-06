@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../config/theme.dart';
 import '../models/prophecy_record.dart';
@@ -136,7 +138,7 @@ String _formatTime(int ts) {
   return '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 }
 
-class _FavoriteItem extends StatelessWidget {
+class _FavoriteItem extends StatefulWidget {
   final ProphecyRecord item;
   final String timeLabel;
   final VoidCallback onDelete;
@@ -148,11 +150,61 @@ class _FavoriteItem extends StatelessWidget {
   });
 
   @override
+  State<_FavoriteItem> createState() => _FavoriteItemState();
+}
+
+class _FavoriteItemState extends State<_FavoriteItem> {
+  void _copy(BuildContext context) {
+    Clipboard.setData(ClipboardData(text: widget.item.text));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('已复制到剪贴板')),
+      );
+    }
+  }
+
+  void _share(BuildContext context) {
+    Share.share(widget.item.text, subject: '废话预言家');
+  }
+
+  Future<bool> _confirmDelete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        ),
+        title: const Text('移除这条收藏？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child:
+                Text('取消', style: TextStyle(color: AppTheme.textMuted)),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.danger,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+              ),
+            ),
+            child: const Text('移除'),
+          ),
+        ],
+      ),
+    );
+    return confirmed == true;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Dismissible(
-      key: ValueKey('${item.time}_${item.text}'),
+      key: ValueKey('${widget.item.time}_${widget.item.text}'),
       direction: DismissDirection.endToStart,
-      onDismissed: (_) => onDelete(),
+      confirmDismiss: (_) => _confirmDelete(context),
+      onDismissed: (_) => widget.onDelete(),
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
@@ -173,7 +225,7 @@ class _FavoriteItem extends StatelessWidget {
                 const Icon(Icons.favorite_rounded,
                     size: 14, color: AppTheme.primaryDark),
                 const SizedBox(width: 6),
-                Text(timeLabel, style: AppTheme.caption(context)),
+                Text(widget.timeLabel, style: AppTheme.caption(context)),
                 const Spacer(),
                 const Text('✨', style: TextStyle(fontSize: 14)),
               ],
@@ -184,35 +236,96 @@ class _FavoriteItem extends StatelessWidget {
               runSpacing: 6,
               children: [
                 StatusChip(
-                  label: item.battery != null ? '${item.battery}%' : '--',
+                  label: widget.item.battery != null
+                      ? '${widget.item.battery}%'
+                      : '--',
                   icon: Icons.battery_full_rounded,
-                  active: item.battery != null,
+                  active: widget.item.battery != null,
                 ),
                 StatusChip(
-                  label: '${item.steps}',
+                  label: '${widget.item.steps}',
                   icon: Icons.directions_walk_rounded,
                   active: true,
                 ),
                 StatusChip(
-                  label: item.volume != null ? '${item.volume}%' : '--',
+                  label: widget.item.volume != null
+                      ? '${widget.item.volume}%'
+                      : '--',
                   icon: Icons.volume_up_rounded,
-                  active: item.volume != null,
+                  active: widget.item.volume != null,
                 ),
                 StatusChip(
-                  label: item.ambientLight != null
-                      ? '${item.ambientLight}lx'
+                  label: widget.item.ambientLight != null
+                      ? '${widget.item.ambientLight}lx'
                       : '--',
                   icon: Icons.wb_sunny_outlined,
-                  active: item.ambientLight != null,
+                  active: widget.item.ambientLight != null,
                 ),
               ],
             ),
             const SizedBox(height: 12),
             Text(
-              item.text,
+              widget.item.text,
               style: AppTheme.bodyMedium(context).copyWith(height: 1.55),
             ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                _MiniAction(
+                  icon: Icons.copy_rounded,
+                  label: '复制',
+                  onTap: () => _copy(context),
+                ),
+                const SizedBox(width: 8),
+                _MiniAction(
+                  icon: Icons.share_rounded,
+                  label: '分享',
+                  onTap: () => _share(context),
+                ),
+              ],
+            ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MiniAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _MiniAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 15, color: AppTheme.textMuted),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: AppTheme.caption(context).copyWith(
+                  fontSize: 12,
+                  color: AppTheme.textMuted,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

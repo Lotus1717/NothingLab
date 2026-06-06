@@ -45,7 +45,7 @@ class SensorCard extends StatelessWidget {
           ),
           const Spacer(),
           Text(
-            '${sensor.dayPhase} · ${sensor.timeHint}',
+            '${sensor.timeHint}',
             style: AppTheme.caption(context).copyWith(
               fontSize: 10,
               color: AppTheme.textMuted,

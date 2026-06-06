@@ -174,7 +174,7 @@ class _ProphecyCardState extends State<ProphecyCard>
                         icon: widget.isLiked
                             ? Icons.favorite_rounded
                             : Icons.favorite_border_rounded,
-                        label: widget.isLiked ? '已喜欢' : '喜欢',
+                        label: widget.isLiked ? '已收藏' : '收藏',
                         primary: true,
                         onPressed: widget.isLiked ? null : widget.onLike,
                       ),

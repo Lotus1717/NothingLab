@@ -318,6 +318,176 @@ class AiService extends ChangeNotifier {
         '环境光线${d.ambientLight}勒克斯时，你眼角余光会多捕捉到${((d.ambientLight % 3) + 1)}粒灰尘',
     (SensorData d) =>
         '${d.timeHint}音量${d.volume}%时，接下来适合做创意的白日梦',
+    (SensorData d) =>
+        '电量${d.battery ?? 50}%的此刻，你的第${((d.battery ?? 50) % 6) + 1}个app正在后台偷看你的位置',
+    (SensorData d) =>
+        '步数${d.steps}不达5000，你今天吃下的第${((d.battery ?? 50) % 3) + 1}口零食会多长0.2克',
+    (SensorData d) =>
+        '亮度${d.brightness}%时，你解锁手机的姿势比${d.dayPhase}平均歪了${((d.brightness % 5) + 1) * 0.3}度',
+    (SensorData d) =>
+        '根据你${d.isMoving ? "正在走" : "没在走"}的状态，你的下一杯水会在${((d.battery ?? 50) % 12) + 3}分钟后被想起',
+    (SensorData d) =>
+        '电量${d.battery ?? 50}%时，你的表情包选择速度会慢${((d.battery ?? 50) % 4 + 1) * 0.15}秒',
+    (SensorData d) =>
+        '步数${d.steps}的此刻，你的蓝牙耳机里飘着一首你最近哼过的歌',
+    (SensorData d) =>
+        '系统音量${d.volume}%时，你下一个短视频会重复播放${((d.volume % 3) + 1)}遍',
+    (SensorData d) =>
+        '电量${d.battery ?? 50}%这个数字，和你上一次看时间的秒数有着隐秘的联系',
+    (SensorData d) =>
+        '${d.dayPhase}的亮度${d.brightness}%下，你会在${((d.brightness % 4) + 1)}分钟后想起一条该回没回的消息',
+    (SensorData d) =>
+        '步数${d.steps}，你的大拇指今天已经滑过了相当于${(d.steps ~/ 30) + 1}层楼的高度',
+    (SensorData d) =>
+        '电量${d.battery ?? 50}%时，你接下来刷到的第${((d.battery ?? 50) % 5) + 2}条内容会让你笑出声',
+    (SensorData d) =>
+        '系统音量${d.volume}%说明你周围环境噪声约${((d.volume % 6) + 1) * 10}分贝',
+    (SensorData d) =>
+        '${d.isMoving ? "正在走动中" : "保持静止"}的你，会在${((d.battery ?? 50) % 6) + 2}分钟内改变一次坐姿',
+    (SensorData d) =>
+        '步数${d.steps}步，你今天的第${(d.steps ~/ 200 % 6) + 1}次解锁手机时会有新通知',
+    (SensorData d) =>
+        '电量${d.battery ?? 50}%时你的瞳孔比${d.dayPhase}平均值小了${((d.battery ?? 50) % 5 + 1) * 0.05}毫米',
+    (SensorData d) =>
+        '环境光线${d.ambientLight}勒克斯时，你会误以为有人看了你一眼——但其实没有',
+    (SensorData d) =>
+        '亮度${d.brightness}%的屏幕前，你的眼皮比${d.dayPhase}早${((d.brightness % 3) + 1)}分钟开始发沉',
+    (SensorData d) =>
+        '步数${d.steps}步说明你今天活动量排在第${(d.steps ~/ 500 % 10) + 1}百分位',
+    (SensorData d) =>
+        '电量${d.battery ?? 50}%时你在搜索栏输入的下一句话会少${((d.battery ?? 50) % 3) + 1}个字',
+    (SensorData d) =>
+        '${d.timeHint}的你，手腕温度比${d.isMoving ? "运动" : "静止"}状态高了${((d.battery ?? 50) % 5 + 1) * 0.1}℃',
+    (SensorData d) =>
+        '系统音量${d.volume}%时你错过了一条${((d.volume % 10) + 1)}秒的语音消息',
+    (SensorData d) =>
+        '步数${d.steps}的今天，你第${(d.steps ~/ 100 % 10) + 1}次看手机时会被自己的屏保可爱到',
+    (SensorData d) =>
+        '电量${d.battery ?? 50}%的这个瞬间，你的手机已经替你做了${((d.battery ?? 50) * 3 + d.steps % 50)}个决定',
+    (SensorData d) =>
+        '亮度${d.brightness}%下你的眼睛调节速度比理想值慢了${((d.brightness % 3) + 1) * 0.05}秒',
+    (SensorData d) =>
+        '步数${d.steps}，你今天的第${(d.steps ~/ 80 % 8) + 1}次深呼吸会比上一次浅${((d.battery ?? 50) % 3 + 1)}%',
+    (SensorData d) =>
+        '${d.dayPhase}的${d.timeHint}，你的专注力还剩${((d.battery ?? 50) % 30) + 40}%',
+    (SensorData d) =>
+        '电量${d.battery ?? 50}%时你刷到的下一条视频${d.isMoving ? "有" : "没有"}猫',
+    (SensorData d) =>
+        '步数${d.steps}步时，你口袋里的钥匙串比${d.dayPhase}早${((d.battery ?? 50) % 5 + 1)}分钟发出声响',
+    (SensorData d) =>
+        '屏幕亮度${d.brightness}%的此刻，你手机的色温比标准暖了${((d.brightness % 4) + 1) * 50}K',
+    (SensorData d) =>
+        '电量${d.battery ?? 50}%时你打开的第${((d.battery ?? 50) % 4) + 1}个app会弹出一个你不需要的更新',
+    (SensorData d) =>
+        '系统音量${d.volume}%意味着你周围的空气振动频率在${((d.volume % 8) + 1) * 100}赫兹左右',
+    (SensorData d) =>
+        '步数${d.steps}步的你，右脚比左脚多承担了${(d.steps % 13) + 3}%的体重',
+    (SensorData d) =>
+        '${d.timeHint}的你能量槽还剩${((d.battery ?? 50) % 40) + 20}%，建议补充糖分',
+    (SensorData d) =>
+        '电量${d.battery ?? 50}%时你打出下一句话的平均字间距会宽${((d.battery ?? 50) % 3 + 1) * 0.1}像素',
+    (SensorData d) =>
+        '步数${d.steps}步，你今天已经消耗了约${(d.steps ~/ 20) + 1}颗M豆的热量',
+    (SensorData d) =>
+        '屏幕亮度${d.brightness}%时你解锁的方式比${d.dayPhase}多了${((d.brightness % 3) + 1)}次误触',
+    (SensorData d) =>
+        '${d.isMoving ? "移动状态" : "静止状态"}下，你的呼吸间隔比${d.dayPhase}多了${((d.battery ?? 50) % 4 + 1) * 0.1}秒',
+    (SensorData d) =>
+        '电量${d.battery ?? 50}%的此刻，${d.dayPhase}的风正在${d.isMoving ? "和你同一个方向" : "从你身边经过"}',
+    (SensorData d) =>
+        '步数${d.steps}时你口袋里的耳机线打了${(d.steps % 5) + 1}个结',
+    (SensorData d) =>
+        '系统音量${d.volume}%时你听到的下一声通知会比你想象中响${((d.volume % 3) + 1) * 0.2}倍',
+    (SensorData d) =>
+        '亮度${d.brightness}%的屏幕前，你的蓝光摄入量已达今日建议值的${((d.brightness % 5) + 1) * 15}%',
+    (SensorData d) =>
+        '电量${d.battery ?? 50}%时你的手机比${d.dayPhase}开始时重了${((d.battery ?? 50) % 3 + 1) * 0.01}克',
+    (SensorData d) =>
+        '步数${d.steps}步的你，今天已经划过了相当于${(d.steps ~/ 200) + 1}个足球场的屏幕',
+    (SensorData d) =>
+        '${d.timeHint}保持${d.isMoving ? "移动" : "静止"}会让你今晚的梦多${((d.battery ?? 50) % 5 + 1)}种颜色',
+    (SensorData d) =>
+        '电量${d.battery ?? 50}%时你手机的陀螺仪比你更清楚你现在的姿势',
+    (SensorData d) =>
+        '屏幕亮度${d.brightness}%时，你的眼睫毛会在屏幕上投下${((d.brightness % 3) + 1) * 0.01}毫米的阴影',
+    (SensorData d) =>
+        '步数${d.steps}步，你今天的第${(d.steps ~/ 300 % 5) + 1}次尴尬来自于一条发错的消息',
+    (SensorData d) =>
+        '系统音量${d.volume}%时，你被下一个通知吓一跳的概率是${((d.volume % 4) + 1) * 15}%',
+    (SensorData d) =>
+        '电量${d.battery ?? 50}%时你双击home的手速比${d.dayPhase}慢了${((d.battery ?? 50) % 5 + 1) * 0.02}秒',
+    (SensorData d) =>
+        '环境光线${d.ambientLight}勒克斯说明你的瞳孔正在以${((d.ambientLight % 5) + 1) * 0.3}毫米/秒的速度收缩',
+    (SensorData d) =>
+        '${d.isMoving ? "走路带风" : "稳如泰山"}的你，肩胛骨之间的肌肉紧张度是${((d.battery ?? 50) % 6) + 1}/10',
+    (SensorData d) =>
+        '步数${d.steps}步时你打了个哈欠，${d.dayPhase}的氧气浓度比${((d.battery ?? 50) % 4 + 1)}分钟前低了0.01%',
+    (SensorData d) =>
+        '电量${d.battery ?? 50}%的此刻，你的手机壳背面有${((d.battery ?? 50) % 8) + 1}个指纹等你擦掉',
+    (SensorData d) =>
+        '系统音量${d.volume}%时${d.dayPhase}的噪音指数对你情绪的影响系数是${((d.volume % 5) + 2) * 0.4}',
+    (SensorData d) =>
+        '步数${d.steps}步的你，今天已经说了约${d.steps ~/ 10 + 10}个字——其中${((d.battery ?? 50) % 8) + 2}句是废话',
+    (SensorData d) =>
+        '亮度${d.brightness}%下你的视杆细胞活跃度比${d.dayPhase}均值低了${((d.brightness % 5) + 1) * 8}%',
+    (SensorData d) =>
+        '${d.timeHint}的你，上一次眨眼是在${((d.battery ?? 50) % 8) + 3}秒前——该眨了',
+    (SensorData d) =>
+        '电量${d.battery ?? 50}%时你的手机在${d.dayPhase}的阳光下反光角度刚好不对——它在提醒你该放下它了',
+    (SensorData d) =>
+        '步数${d.steps}步，你今天少走的${(d.steps % 30 + 10)}步会被你的夜宵记住',
+    (SensorData d) =>
+        '系统音量${d.volume}%这个数字和你今天点外卖的金额最后两位有${((d.volume % 5) + 1) * 20}%的关联',
+    (SensorData d) =>
+        '环境光线${d.ambientLight}勒克斯时，你影子模糊程度刚好让${((d.ambientLight % 5) + 1)}个人认不出你',
+    (SensorData d) =>
+        '电量${d.battery ?? 50}%时，你手机里第${((d.battery ?? 50) % 9) + 1}张照片拍的是一只正在看你手机的东西',
+    (SensorData d) =>
+        '步数${d.steps}步的你，鞋底磨损率比${d.dayPhase}均值高了${(d.steps % 8) + 2}%',
+    (SensorData d) =>
+        '${d.dayPhase}${d.brightness}%的亮度下，你的多巴胺分泌速度刚好是${((d.brightness % 4) + 1) * 0.3}单位/分钟',
+    (SensorData d) =>
+        '电量${d.battery ?? 50}%时你下滑刷新时比${d.dayPhase}更加用力——是焦虑在驱动你的拇指',
+    (SensorData d) =>
+        '系统音量${d.volume}%时，你听到的第${((d.volume % 4) + 1)}个声音来自${d.dayPhase}的窗外',
+    (SensorData d) =>
+        '步数${d.steps}步，你今天的第${(d.steps ~/ 500 % 5) + 1}次灵感来自于一句你无意间听到的话',
+    (SensorData d) =>
+        '亮度${d.brightness}%时你点击屏幕的力度比${d.dayPhase}重了${((d.brightness % 5) + 1) * 3}克力',
+    (SensorData d) =>
+        '${d.timeHint}如果${d.isMoving ? "继续走" : "保持不动"}，你将在${((d.battery ?? 50) % 10) + 3}分钟后想起一件去年的小事',
+    (SensorData d) =>
+        '电量${d.battery ?? 50}%这个数字和海平面${((d.battery ?? 50) * 100) % 9999 + 1}米处的气压值有着奇妙的对应',
+    (SensorData d) =>
+        '步数${d.steps}步，你右手拇指的运动量是左手的${(d.steps % 5) + 2}倍——典型的刷手机型社会',
+    (SensorData d) =>
+        '系统音量${d.volume}%时你对下一个社交消息的期待指数是${((d.volume % 6) + 1) * 15}%',
+    (SensorData d) =>
+        '环境光线${d.ambientLight}勒克斯的${d.dayPhase}，你的瞳孔形状像一个完美的不等式',
+    (SensorData d) =>
+        '电量${d.battery ?? 50}%的你，今日最后一次失眠和${((d.battery ?? 50) % 3 + 1)}小时前喝的那杯东西有关',
+    (SensorData d) =>
+        '步数${d.steps}步，你今天的第${(d.steps ~/ 700 % 4) + 1}次快乐与你当前看到的颜色有关',
+    (SensorData d) =>
+        '${d.dayPhase}的屏幕亮度${d.brightness}%，比你理想中的生活亮度低了${((d.brightness % 5) + 1) * 10}%',
+    (SensorData d) =>
+        '电量${d.battery ?? 50}%时你手机的无线信号里飘着${((d.battery ?? 50) % 6) + 3}条未送达的群消息',
+    (SensorData d) =>
+        '步数${d.steps}步，你今天已经滑过了${(d.steps ~/ 5) + 10}米的屏幕——比你的实际步距还长',
+    (SensorData d) =>
+        '系统音量${d.volume}%的${d.dayPhase}，你体内的咖啡因浓度正在以${((d.volume % 4) + 1) * 0.2}微克/分的速度衰减',
+    (SensorData d) =>
+        '亮度${d.brightness}%时你解锁手机的速度比${d.dayPhase}快${((d.brightness % 4) + 1) * 0.1}秒——因为外面太亮了',
+    (SensorData d) =>
+        '${d.timeHint}的你，注意力曲线在${((d.battery ?? 50) % 20) + 40}%处徘徊——和你的电量同步',
+    (SensorData d) =>
+        '电量${d.battery ?? 50}%时你手机的重力感应器感知到了${((d.battery ?? 50) % 5 + 1) * 0.5}°的姿态偏移',
+    (SensorData d) =>
+        '步数${d.steps}步的你，下一条朋友圈的点赞数会是${(d.steps % 9) + 3}——不多不少',
+    (SensorData d) =>
+        '系统音量${d.volume}%时你收到的一条信息会把你的嘴角往上拉${((d.volume % 3) + 1) * 0.5}毫米',
+    (SensorData d) =>
+        '${d.dayPhase}的${d.timeHint}，你的第${(d.brightness % 5) + 3}个念头会和食物有关——概率97%',
   ];
 
   Future<String> generateProphecy(SensorData sensor) async {

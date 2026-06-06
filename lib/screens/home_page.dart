@@ -10,6 +10,7 @@ import '../widgets/lazy_cat.dart';
 import '../widgets/oracle_background.dart';
 import '../widgets/prophecy_card.dart';
 import '../widgets/sensor_card.dart';
+import '../widgets/status_chip.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -68,6 +69,7 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   const SizedBox(height: 8),
                   _HomeHero(
+                    aiSvc: aiSvc,
                     onRefreshSensors: () => sensorSvc.init(),
                   ),
                   const SizedBox(height: 16),
@@ -99,10 +101,9 @@ class _HomePageState extends State<HomePage> {
                       ],
                     ),
                   ),
-                  if (hasProphecy) ...[
+                  if (hasProphecy && !aiSvc.loading) ...[
                     const SizedBox(height: 20),
                     ProphecyCard(
-                      key: ValueKey(aiSvc.generationSeq),
                       prophecy: aiSvc.currentProphecy,
                       sensor: s,
                       onRefresh: _onDicePressed,
@@ -120,20 +121,37 @@ class _HomePageState extends State<HomePage> {
 }
 
 class _HomeHero extends StatelessWidget {
+  final AiService aiSvc;
   final VoidCallback onRefreshSensors;
 
   const _HomeHero({
+    required this.aiSvc,
     required this.onRefreshSensors,
   });
 
+  IconData _engineIcon(ProphecyEngine engine) => switch (engine) {
+        ProphecyEngine.qwen => Icons.memory_rounded,
+        ProphecyEngine.localAi => Icons.auto_awesome_rounded,
+        ProphecyEngine.template => Icons.library_books_outlined,
+      };
+
   @override
   Widget build(BuildContext context) {
+    final engine = aiSvc.displayEngine;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(
           child: Text('废话预言家', style: AppTheme.displayTitle(context)),
         ),
+        StatusChip(
+          label: engine.label,
+          icon: _engineIcon(engine),
+          active: engine != ProphecyEngine.template,
+          activeColor: AppTheme.secondary,
+        ),
+        const SizedBox(width: 4),
         IconButton(
           icon: const Icon(Icons.refresh_rounded, size: 24),
           onPressed: onRefreshSensors,

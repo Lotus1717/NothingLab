@@ -11,6 +11,19 @@ import '../utils/prophecy_prompt_builder.dart';
 import 'local_ai_bridge.dart';
 import 'prophecy_generator.dart';
 
+/// 废话生成来源
+enum ProphecyEngine {
+  qwen,
+  localAi,
+  template;
+
+  String get label => switch (this) {
+        ProphecyEngine.qwen => '千问',
+        ProphecyEngine.localAi => '本地AI',
+        ProphecyEngine.template => '模板库',
+      };
+}
+
 class AiService extends ChangeNotifier {
   static const _historyKey = 'prophecy_history_v1';
   static const _maxHistory = 30;
@@ -19,6 +32,7 @@ class AiService extends ChangeNotifier {
   bool _modelLoaded = false;
   bool _isModelAvailable = false;
   bool _mlxPlatformSupported = false;
+  ProphecyEngine _lastProphecyEngine = ProphecyEngine.template;
   String _currentProphecy = '';
   int _generationSeq = 0;
   List<ProphecyRecord> _history = [];
@@ -30,6 +44,17 @@ class AiService extends ChangeNotifier {
   bool get modelLoaded => _modelLoaded;
   bool get isModelAvailable => _isModelAvailable;
   bool get mlxPlatformSupported => _mlxPlatformSupported;
+  ProphecyEngine get lastProphecyEngine => _lastProphecyEngine;
+  ProphecyEngine get plannedProphecyEngine {
+    if (_shouldUseMlx()) return ProphecyEngine.qwen;
+    if (_localAi.modelAvailable) return ProphecyEngine.localAi;
+    return ProphecyEngine.template;
+  }
+
+  /// 首页展示：有废话时显示上次来源，否则显示即将使用的引擎
+  ProphecyEngine get displayEngine =>
+      _currentProphecy.isNotEmpty ? _lastProphecyEngine : plannedProphecyEngine;
+
   String get currentProphecy => _currentProphecy;
   int get generationSeq => _generationSeq;
   List<ProphecyRecord> get history => List.unmodifiable(_history);
@@ -180,6 +205,7 @@ class AiService extends ChangeNotifier {
     notifyListeners();
 
     String prophecy;
+    ProphecyEngine engine;
 
     if (_shouldUseMlx()) {
       try {
@@ -201,10 +227,14 @@ class AiService extends ChangeNotifier {
         );
         if (prophecy.isEmpty) {
           prophecy = _getFallbackProphecy(fresh, salt: nonce);
+          engine = ProphecyEngine.template;
+        } else {
+          engine = ProphecyEngine.qwen;
         }
       } catch (e) {
         debugPrint('ML generation failed, using fallback: $e');
         prophecy = _getFallbackProphecy(fresh, salt: nonce);
+        engine = ProphecyEngine.template;
       }
     } else if (_localAi.modelAvailable) {
       prophecy = await _generateWithQualityGate(
@@ -226,10 +256,14 @@ class AiService extends ChangeNotifier {
       );
       if (prophecy.isEmpty) {
         prophecy = _getFallbackProphecy(fresh, salt: nonce);
+        engine = ProphecyEngine.template;
+      } else {
+        engine = ProphecyEngine.localAi;
       }
     } else {
       await Future.delayed(const Duration(milliseconds: 800));
       prophecy = _getFallbackProphecy(fresh, salt: nonce);
+      engine = ProphecyEngine.template;
     }
 
     prophecy = ProphecyNormalizer.normalizeProphecy(prophecy);
@@ -240,6 +274,7 @@ class AiService extends ChangeNotifier {
       salt: nonce,
     );
 
+    _lastProphecyEngine = engine;
     _currentProphecy = prophecy;
     _history.insert(
       0,

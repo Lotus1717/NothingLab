@@ -82,20 +82,8 @@ class _SettingsPageState extends State<SettingsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Icon(Icons.tune_rounded,
-                      size: 24, color: AppTheme.textDark),
-                  const SizedBox(width: 8),
-                  Text('小设置', style: AppTheme.pageTitle(context)),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '传感器与神谕引擎',
-                style: AppTheme.caption(context),
-              ),
+              const SizedBox(height: 12),
+              Text('小设置', style: AppTheme.pageTitle(context)),
               const SizedBox(height: 20),
               const SectionHeader(title: '传感器状态'),
               _SettingRow(

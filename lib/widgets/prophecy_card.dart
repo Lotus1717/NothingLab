@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:share_plus/share_plus.dart';
-
 import '../config/theme.dart';
+import '../utils/prophecy_image_share.dart';
 import 'app_card.dart';
+import 'prophecy_share_card.dart';
 
 class ProphecyCard extends StatefulWidget {
   final String prophecy;
@@ -23,6 +23,9 @@ class ProphecyCard extends StatefulWidget {
 
 class _ProphecyCardState extends State<ProphecyCard>
     with SingleTickerProviderStateMixin {
+  final GlobalKey _shareImageKey = GlobalKey();
+  bool _sharing = false;
+
   late AnimationController _revealCtrl;
   late Animation<double> _fade;
 
@@ -90,8 +93,30 @@ class _ProphecyCardState extends State<ProphecyCard>
     super.dispose();
   }
 
-  void _share() {
-    Share.share('废话预言家说：${widget.prophecy}');
+  Future<void> _share() async {
+    if (_sharing) return;
+    setState(() => _sharing = true);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('正在生成分享图…'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    }
+
+    try {
+      await WidgetsBinding.instance.endOfFrame;
+      await shareRepaintBoundaryAsImage(_shareImageKey);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('分享失败：$e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _sharing = false);
+    }
   }
 
   void _copy() {
@@ -107,64 +132,76 @@ class _ProphecyCardState extends State<ProphecyCard>
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: _fade,
-      child: AppCard.oracle(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            left: -5000,
+            child: RepaintBoundary(
+              key: _shareImageKey,
+              child: ProphecyShareCard(prophecy: widget.prophecy),
+            ),
+          ),
+          AppCard.oracle(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.auto_awesome_rounded,
-                    size: 16, color: AppTheme.oracleGold),
-                const SizedBox(width: 6),
-                Text(
-                  '今日神谕 · 温暖废话一枚',
-                  style: AppTheme.sectionHeader(context).copyWith(
-                    color: AppTheme.oracleGold,
-                    fontSize: 12,
-                    letterSpacing: 0.3,
+                Row(
+                  children: [
+                    const Icon(Icons.auto_awesome_rounded,
+                        size: 16, color: AppTheme.oracleGold),
+                    const SizedBox(width: 6),
+                    Text(
+                      '今日神谕',
+                      style: AppTheme.sectionHeader(context).copyWith(
+                        color: AppTheme.oracleGold,
+                        fontSize: 12,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Center(
+                  child: Text(
+                    _displayedText,
+                    textAlign: TextAlign.center,
+                    style: AppTheme.prophecyBody(context),
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Center(
-              child: Text(
-                _displayedText,
-                textAlign: TextAlign.center,
-                style: AppTheme.prophecyBody(context),
-              ),
-            ),
-            if (_typingDone) ...[
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _ActionButton(
-                    icon: Icons.refresh_rounded,
-                    label: '再来一条',
-                    primary: true,
-                    onPressed: widget.onRefresh,
-                  ),
-                  const SizedBox(width: 10),
-                  _ActionButton(
-                    icon: Icons.content_copy_rounded,
-                    label: '复制',
-                    primary: false,
-                    onPressed: _copy,
-                  ),
-                  const SizedBox(width: 10),
-                  _ActionButton(
-                    icon: Icons.share_rounded,
-                    label: '分享',
-                    primary: false,
-                    onPressed: _share,
+                if (_typingDone) ...[
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _ActionButton(
+                        icon: Icons.refresh_rounded,
+                        label: '再来一条',
+                        primary: true,
+                        onPressed: widget.onRefresh,
+                      ),
+                      const SizedBox(width: 10),
+                      _ActionButton(
+                        icon: Icons.content_copy_rounded,
+                        label: '复制',
+                        primary: false,
+                        onPressed: _copy,
+                      ),
+                      const SizedBox(width: 10),
+                      _ActionButton(
+                        icon: Icons.image_rounded,
+                        label: _sharing ? '生成中' : '分享图',
+                        primary: false,
+                        onPressed: _sharing ? null : _share,
+                      ),
+                    ],
                   ),
                 ],
-              ),
-            ],
-          ],
-        ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -174,59 +211,64 @@ class _ActionButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool primary;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   const _ActionButton({
     required this.icon,
     required this.label,
     required this.primary,
-    required this.onPressed,
+    this.onPressed,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(24),
-        child: Ink(
-          decoration: BoxDecoration(
-            gradient: primary
-                ? const LinearGradient(
-                    colors: [Color(0xFFFFB7B2), Color(0xFFFF8A7A)],
-                  )
-                : null,
-            color: primary ? null : const Color(0xFFF4F0EC),
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: primary
-                ? [
-                    BoxShadow(
-                      color: AppTheme.primaryDark.withValues(alpha: 0.2),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
+    final enabled = onPressed != null;
+    return Opacity(
+      opacity: enabled ? 1 : 0.5,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(24),
+          child: Ink(
+            decoration: BoxDecoration(
+              gradient: primary
+                  ? const LinearGradient(
+                      colors: [Color(0xFFFFB7B2), Color(0xFFFF8A7A)],
+                    )
+                  : null,
+              color: primary ? null : const Color(0xFFF4F0EC),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: primary
+                  ? [
+                      BoxShadow(
+                        color: AppTheme.primaryDark.withValues(alpha: 0.2),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon,
+                      size: 16,
+                      color: primary ? Colors.white : AppTheme.textDark),
+                  const SizedBox(width: 5),
+                  Text(
+                    label,
+                    style: AppTheme.caption(context).copyWith(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: primary ? Colors.white : AppTheme.textDark,
                     ),
-                  ]
-                : null,
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon,
-                    size: 16,
-                    color: primary ? Colors.white : AppTheme.textDark),
-                const SizedBox(width: 5),
-                Text(
-                  label,
-                  style: AppTheme.caption(context).copyWith(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: primary ? Colors.white : AppTheme.textDark,
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

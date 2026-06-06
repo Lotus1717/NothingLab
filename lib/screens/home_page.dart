@@ -8,10 +8,10 @@ import '../services/ai_service.dart';
 import '../services/sensor_service.dart';
 import '../widgets/dice_button.dart';
 import '../widgets/oracle_background.dart';
-import '../widgets/oracle_empty_state.dart';
 import '../widgets/oracle_loading.dart';
 import '../widgets/prophecy_card.dart';
 import '../widgets/sensor_card.dart';
+import '../widgets/status_chip.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -68,54 +68,38 @@ class _HomePageState extends State<HomePage> {
                   _HomeHero(aiSvc: aiSvc, onRefreshSensors: () => sensorSvc.init()),
                   const SizedBox(height: 16),
                   SensorCard(sensor: s),
-                  const SizedBox(height: 32),
-                  Center(
-                    child: Column(
-                      children: [
-                        DiceButton(
-                          pressed: _dicePressed,
-                          loading: aiSvc.loading,
-                          onPressed: _onDicePressed,
-                        ),
-                        const SizedBox(height: 16),
-                        if (aiSvc.loading)
-                          OracleLoading(
-                            message: aiSvc.getLoadingText(_loadingStep),
-                          )
-                        else
-                          Text(
-                            '[ 戳一下 ]',
-                            style: AppTheme.caption(context).copyWith(
-                              fontSize: 14,
-                              letterSpacing: 0.3,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 28),
                   if (hasProphecy)
                     ProphecyCard(
                       prophecy: aiSvc.currentProphecy,
                       onRefresh: _onDicePressed,
                     )
-                  else if (!aiSvc.loading)
-                    const OracleEmptyState(
-                      emoji: '🎲',
-                      title: '神谕尚未降临',
-                      subtitle: '轻触骰子，让传感器与命运开个玩笑',
-                    ),
-                  const SizedBox(height: 24),
-                  Center(
-                    child: Text(
-                      '· · · · · · · · · · · ·',
-                      style: AppTheme.caption(context).copyWith(
-                        color: AppTheme.textLight,
-                        letterSpacing: 4,
+                  else
+                    Center(
+                      child: Column(
+                        children: [
+                          DiceButton(
+                            pressed: _dicePressed,
+                            loading: aiSvc.loading,
+                            onPressed: _onDicePressed,
+                          ),
+                          const SizedBox(height: 14),
+                          if (aiSvc.loading)
+                            OracleLoading(
+                              message: aiSvc.getLoadingText(_loadingStep),
+                            )
+                          else
+                            Text(
+                              '戳一下，听句废话',
+                              style: AppTheme.caption(context).copyWith(
+                                fontSize: 14,
+                                color: AppTheme.textMuted,
+                              ),
+                            ),
+                        ],
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
@@ -159,7 +143,7 @@ class _HomeHero extends StatelessWidget {
               Text('废话预言家', style: AppTheme.displayTitle(context)),
               const SizedBox(height: 4),
               Text(
-                '轻触骰子，揭晓神谕',
+                '读取传感器，生成今日废话',
                 style: AppTheme.caption(context).copyWith(
                   color: AppTheme.textMuted,
                 ),

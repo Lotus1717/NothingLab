@@ -71,55 +71,24 @@ class ProphecyShareCard extends StatelessWidget {
                 ),
               ],
             ),
-            child: Column(
-              children: [
-                Text(
-                  '「',
-                  style: AppFonts.displayStyle(
-                    fontSize: 28,
-                    color: AppTheme.oracleGold.withValues(alpha: 0.55),
-                    height: 0.8,
-                  ),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                prophecy,
+                textAlign: TextAlign.left,
+                style: AppFonts.bodyStyle(
+                  fontSize: 19,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.textDark,
+                  height: 1.65,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  prophecy,
-                  textAlign: TextAlign.center,
-                  style: AppFonts.bodyStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.w500,
-                    color: AppTheme.textDark,
-                    height: 1.65,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '」',
-                  style: AppFonts.displayStyle(
-                    fontSize: 28,
-                    color: AppTheme.oracleGold.withValues(alpha: 0.55),
-                    height: 0.8,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
           if (sensor != null) ...[
             const SizedBox(height: 16),
             _SensorSnapshot(sensor: sensor!),
           ],
-          const SizedBox(height: 14),
-          Text(
-            sensor != null
-                ? '${sensor!.dayPhase} · ${sensor!.timeHint} · 戳戳小猫，听句废话'
-                : '戳戳小猫，听句废话',
-            textAlign: TextAlign.center,
-            style: AppFonts.bodyStyle(
-              fontSize: 11,
-              color: AppTheme.textMuted,
-              height: 1.4,
-            ),
-          ),
         ],
       ),
     );

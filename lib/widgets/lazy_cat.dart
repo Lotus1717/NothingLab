@@ -120,8 +120,7 @@ class _CatPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final alert = loading;
     final tailSway = (alert ? 3.5 : 5.0) * math.sin(tailPhase);
-    final earLift = alert ? -7.0 : 0.0;
-    final earSway = math.sin(earPhase) * (alert ? 2.2 : 1.4);
+    final earSway = math.sin(earPhase) * (alert ? 0.8 : 1.4);
 
     final ink = Paint()
       ..color = _inkColor
@@ -148,7 +147,7 @@ class _CatPainter extends CustomPainter {
 
     _drawTail(canvas, ink, tailSway);
     _drawBody(canvas, ink);
-    _drawEars(canvas, ink, earLift, earSway);
+    _drawEars(canvas, ink, alert, earSway);
     _drawPaws(canvas, ink);
   }
 
@@ -203,30 +202,37 @@ class _CatPainter extends CustomPainter {
     );
   }
 
-  void _drawEars(Canvas canvas, Paint ink, double earLift, double earSway) {
-    final leftTwitch = twitchEar == 1 ? -5.0 : 0.0;
-    final rightTwitch = twitchEar == 2 ? 5.0 : 0.0;
+  void _drawEars(Canvas canvas, Paint ink, bool alert, double earSway) {
+    // 耳根始终贴在头部轮廓上，戳戳时只竖起耳尖，避免整体上移脱节。
+    const leftBase = Offset(36, 33);
+    const rightBase = Offset(48, 31);
+    const leftFold = Offset(38, 32);
+    const rightFold = Offset(52, 31);
+
+    final leftTwitch = !alert && twitchEar == 1 ? -4.0 : 0.0;
+    final rightTwitch = !alert && twitchEar == 2 ? 4.0 : 0.0;
+
+    final leftTip = Offset(
+      (alert ? 25 : 22) + leftTwitch,
+      (alert ? 10 : 12) + earSway,
+    );
+    final rightTip = Offset(
+      (alert ? 57 : 56) + rightTwitch,
+      (alert ? 7 : 9) - earSway,
+    );
+    final leftMid = Offset(34 + leftTwitch * 0.25, alert ? 27 : 28);
+    final rightMid = Offset(58 + rightTwitch * 0.25, alert ? 26 : 27);
 
     final leftEar = Path()
-      ..moveTo(36, 33 + earLift)
-      ..quadraticBezierTo(
-        22 + leftTwitch,
-        12 + earLift + earSway,
-        34 + leftTwitch * 0.3,
-        28 + earLift,
-      )
-      ..quadraticBezierTo(38, 32 + earLift, 36, 33 + earLift);
+      ..moveTo(leftBase.dx, leftBase.dy)
+      ..quadraticBezierTo(leftTip.dx, leftTip.dy, leftMid.dx, leftMid.dy)
+      ..quadraticBezierTo(leftFold.dx, leftFold.dy, leftBase.dx, leftBase.dy);
     canvas.drawPath(leftEar, ink);
 
     final rightEar = Path()
-      ..moveTo(48, 31 + earLift)
-      ..quadraticBezierTo(
-        56 + rightTwitch,
-        9 + earLift - earSway,
-        58 + rightTwitch * 0.3,
-        27 + earLift,
-      )
-      ..quadraticBezierTo(52, 31 + earLift, 48, 31 + earLift);
+      ..moveTo(rightBase.dx, rightBase.dy)
+      ..quadraticBezierTo(rightTip.dx, rightTip.dy, rightMid.dx, rightMid.dy)
+      ..quadraticBezierTo(rightFold.dx, rightFold.dy, rightBase.dx, rightBase.dy);
     canvas.drawPath(rightEar, ink);
   }
 

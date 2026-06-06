@@ -22,8 +22,25 @@ class ProphecyPromptBuilder {
     '系统音量45%时，你听到的下一句废话会比上一句响0.3分贝',
   ];
 
+  static String _avoidRepeatBlock(String? avoidText, int? nonce) {
+    final parts = <String>[];
+    if (avoidText != null && avoidText.isNotEmpty) {
+      parts.add('- 上一句预言：$avoidText');
+      parts.add('- 必须写完全不同的新句子，禁止重复或改写上一句');
+    }
+    if (nonce != null) {
+      parts.add('- 本次编号：$nonce（每次编号不同，内容也必须不同）');
+    }
+    if (parts.isEmpty) return '';
+    return '\n${parts.join('\n')}';
+  }
+
   /// LocalAi 用纯文本 prompt
-  static String buildPrompt(SensorData sensor) {
+  static String buildPrompt(
+    SensorData sensor, {
+    String? avoidText,
+    int? nonce,
+  }) {
     return '''$_styleSpec
 
 示例：
@@ -38,13 +55,17 @@ class ProphecyPromptBuilder {
 - 系统音量：${sensor.volume}%
 - 今日步数：${sensor.steps} 步
 - 身体状态：${sensor.isMoving ? '正在移动' : '静止'}
-- 环境光线：${sensor.ambientLight} 勒克斯
+- 环境光线：${sensor.ambientLight} 勒克斯${_avoidRepeatBlock(avoidText, nonce)}
 
 预言：''';
   }
 
   /// MLX 用 ChatML 包装
-  static String buildChatMLPrompt(SensorData sensor) {
+  static String buildChatMLPrompt(
+    SensorData sensor, {
+    String? avoidText,
+    int? nonce,
+  }) {
     final userContent = '''根据以下传感器数据写一条预言：
 
 - 时段：${sensor.dayPhase} · ${sensor.timeHint}
@@ -53,7 +74,7 @@ class ProphecyPromptBuilder {
 - 系统音量：${sensor.volume}%
 - 今日步数：${sensor.steps} 步
 - 身体状态：${sensor.isMoving ? '正在移动' : '静止'}
-- 环境光线：${sensor.ambientLight} 勒克斯
+- 环境光线：${sensor.ambientLight} 勒克斯${_avoidRepeatBlock(avoidText, nonce)}
 
 示例：
 1. ${_fewShotExamples[0]}

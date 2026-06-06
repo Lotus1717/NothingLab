@@ -69,4 +69,18 @@ class ProphecyNormalizer {
 
     return _sensorAnchors.hasMatch(text) || _hasNumber.hasMatch(text);
   }
+
+  /// 放宽门：有中文、长度合规即可，避免小模型输出被误判后回退模板
+  static bool isSoftAcceptableProphecy(String text) {
+    if (text.isEmpty) return false;
+    if (text.length < ProphecyStyle.minChars ||
+        text.length > ProphecyStyle.maxChars) {
+      return false;
+    }
+    if (!_hasChinese.hasMatch(text)) return false;
+    if (_hasEnglish.hasMatch(text)) return false;
+    if (_hasEmoji.hasMatch(text)) return false;
+    if (_forbiddenPrefixes.hasMatch(text)) return false;
+    return true;
+  }
 }

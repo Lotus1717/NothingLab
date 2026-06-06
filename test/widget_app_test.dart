@@ -120,7 +120,7 @@ void main() {
       expect(find.textContaining('步数'), findsOneWidget);
       expect(find.textContaining('系统音量'), findsOneWidget);
       expect(find.textContaining('环境光线'), findsOneWidget);
-      expect(find.textContaining('AI 引擎'), findsOneWidget);
+      expect(find.textContaining('使用本机小模型，数据不上传'), findsOneWidget);
     });
   });
 

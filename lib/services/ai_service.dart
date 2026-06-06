@@ -18,7 +18,9 @@ class AiService extends ChangeNotifier {
   bool _loading = false;
   bool _modelLoaded = false;
   bool _isModelAvailable = false;
+  bool _mlxPlatformSupported = false;
   String _currentProphecy = '';
+  int _generationSeq = 0;
   List<ProphecyRecord> _history = [];
 
   final LocalAiBridge _localAi = LocalAiBridge();
@@ -27,7 +29,9 @@ class AiService extends ChangeNotifier {
   bool get loading => _loading;
   bool get modelLoaded => _modelLoaded;
   bool get isModelAvailable => _isModelAvailable;
+  bool get mlxPlatformSupported => _mlxPlatformSupported;
   String get currentProphecy => _currentProphecy;
+  int get generationSeq => _generationSeq;
   List<ProphecyRecord> get history => List.unmodifiable(_history);
   LocalAiBridge get localAi => _localAi;
 
@@ -69,6 +73,22 @@ class AiService extends ChangeNotifier {
   }
 
   Future<void> checkModelAvailability() async {
+    _mlxPlatformSupported = await _bridge.isPlatformSupported();
+
+    if (_mlxPlatformSupported) {
+      try {
+        final loaded = await _bridge.isLoaded();
+        _isModelAvailable = true;
+        _modelLoaded = loaded;
+      } catch (e) {
+        _isModelAvailable = false;
+        _modelLoaded = false;
+        debugPrint('ML model not available: $e');
+      }
+      notifyListeners();
+      return;
+    }
+
     await _localAi.initialize();
     if (_localAi.modelAvailable) {
       _isModelAvailable = true;
@@ -77,26 +97,32 @@ class AiService extends ChangeNotifier {
       return;
     }
 
-    try {
-      if (!await _bridge.isPlatformSupported()) {
-        _isModelAvailable = false;
-        _modelLoaded = false;
-        notifyListeners();
-        return;
-      }
-      final loaded = await _bridge.isLoaded();
-      _isModelAvailable = true;
-      _modelLoaded = loaded;
-      notifyListeners();
-    } catch (e) {
-      _isModelAvailable = false;
-      _modelLoaded = false;
-      debugPrint('ML model not available: $e');
-    }
+    _isModelAvailable = false;
+    _modelLoaded = false;
+    notifyListeners();
   }
 
   Future<void> loadModel({void Function(double progress)? onProgress}) async {
     if (_modelLoaded) return;
+
+    _mlxPlatformSupported = await _bridge.isPlatformSupported();
+    if (_mlxPlatformSupported) {
+      _isModelAvailable = true;
+      try {
+        await _bridge.loadModel();
+        _modelLoaded = await _bridge.isLoaded();
+        if (_modelLoaded) {
+          _isModelAvailable = true;
+          onProgress?.call(1.0);
+        } else {
+          debugPrint('MLX model load finished but isLoaded=false');
+        }
+      } catch (e) {
+        debugPrint('Model load failed: $e');
+      }
+      notifyListeners();
+      return;
+    }
 
     await _localAi.initialize();
     if (_localAi.modelAvailable) {
@@ -104,20 +130,11 @@ class AiService extends ChangeNotifier {
       _isModelAvailable = true;
       onProgress?.call(1.0);
       notifyListeners();
-      return;
-    }
-
-    if (_isModelAvailable && !_modelLoaded) {
-      try {
-        await _bridge.loadModel();
-        _modelLoaded = true;
-        onProgress?.call(1.0);
-      } catch (e) {
-        debugPrint('Model load failed: $e');
-      }
-      notifyListeners();
     }
   }
+
+  bool _shouldUseMlx() =>
+      _mlxPlatformSupported && _modelLoaded && _isModelAvailable;
 
   static final _fallbackProphecies = [
     (SensorData d) =>
@@ -153,48 +170,75 @@ class AiService extends ChangeNotifier {
   ];
 
   Future<String> generateProphecy(SensorData sensor) async {
+    if (_loading) return _currentProphecy;
+
     final fresh = sensor.withCurrentTimeHints();
+    final previous = _currentProphecy;
+    final nonce = ++_generationSeq;
+
     _loading = true;
     notifyListeners();
 
     String prophecy;
 
-    if (_localAi.modelAvailable) {
+    if (_shouldUseMlx()) {
+      try {
+        prophecy = await _generateWithQualityGate(
+          () => _bridge.generateProphecy(
+            prompt: ProphecyPromptBuilder.buildChatMLPrompt(
+              fresh,
+              avoidText: previous,
+              nonce: nonce,
+            ),
+          ),
+          () => _bridge.generateProphecy(
+            prompt: ProphecyPromptBuilder.buildChatMLPrompt(
+              fresh,
+              avoidText: previous,
+              nonce: nonce + 1000,
+            ),
+          ),
+        );
+        if (prophecy.isEmpty) {
+          prophecy = _getFallbackProphecy(fresh, salt: nonce);
+        }
+      } catch (e) {
+        debugPrint('ML generation failed, using fallback: $e');
+        prophecy = _getFallbackProphecy(fresh, salt: nonce);
+      }
+    } else if (_localAi.modelAvailable) {
       prophecy = await _generateWithQualityGate(
         () => _localAi.generate(
-          prompt: ProphecyPromptBuilder.buildPrompt(fresh),
+          prompt: ProphecyPromptBuilder.buildPrompt(
+            fresh,
+            avoidText: previous,
+            nonce: nonce,
+          ),
         ),
         () => _localAi.generate(
-          prompt: ProphecyPromptBuilder.buildPrompt(fresh),
+          prompt: ProphecyPromptBuilder.buildPrompt(
+            fresh,
+            avoidText: previous,
+            nonce: nonce + 1000,
+          ),
           temperature: ProphecyStyle.retryTemperature,
         ),
       );
       if (prophecy.isEmpty) {
-        prophecy = _getFallbackProphecy(fresh);
-      }
-    } else if (_modelLoaded && _isModelAvailable) {
-      try {
-        prophecy = await _generateWithQualityGate(
-          () => _bridge.generateProphecy(
-            prompt: ProphecyPromptBuilder.buildChatMLPrompt(fresh),
-          ),
-          () => _bridge.generateProphecy(
-            prompt: ProphecyPromptBuilder.buildChatMLPrompt(fresh),
-          ),
-        );
-        if (prophecy.isEmpty) {
-          prophecy = _getFallbackProphecy(fresh);
-        }
-      } catch (e) {
-        debugPrint('ML generation failed, using fallback: $e');
-        prophecy = _getFallbackProphecy(fresh);
+        prophecy = _getFallbackProphecy(fresh, salt: nonce);
       }
     } else {
       await Future.delayed(const Duration(milliseconds: 800));
-      prophecy = _getFallbackProphecy(fresh);
+      prophecy = _getFallbackProphecy(fresh, salt: nonce);
     }
 
     prophecy = ProphecyNormalizer.normalizeProphecy(prophecy);
+    prophecy = _ensureDistinctProphecy(
+      prophecy,
+      previous: previous,
+      sensor: fresh,
+      salt: nonce,
+    );
 
     _currentProphecy = prophecy;
     _history.insert(
@@ -224,10 +268,15 @@ class AiService extends ChangeNotifier {
     Future<String?> Function() generate,
     Future<String?> Function() retry,
   ) async {
+    String? softCandidate;
+
     var raw = await generate();
     var text = ProphecyNormalizer.normalizeProphecy(raw ?? '');
     if (text.isNotEmpty && ProphecyNormalizer.isAcceptableProphecy(text)) {
       return text;
+    }
+    if (text.isNotEmpty && ProphecyNormalizer.isSoftAcceptableProphecy(text)) {
+      softCandidate = text;
     }
 
     raw = await retry();
@@ -235,17 +284,39 @@ class AiService extends ChangeNotifier {
     if (text.isNotEmpty && ProphecyNormalizer.isAcceptableProphecy(text)) {
       return text;
     }
-    return '';
+    if (text.isNotEmpty && ProphecyNormalizer.isSoftAcceptableProphecy(text)) {
+      return text;
+    }
+    return softCandidate ?? '';
   }
 
-  String _getFallbackProphecy(SensorData sensor) {
+  String _getFallbackProphecy(SensorData sensor, {required int salt}) {
     final idx = ((sensor.battery ?? 50) +
             sensor.brightness +
             sensor.steps % 10 +
-            sensor.timestamp.minute)
+            sensor.timestamp.millisecond +
+            salt)
         .abs() %
         _fallbackProphecies.length;
     return _fallbackProphecies[idx](sensor);
+  }
+
+  String _ensureDistinctProphecy(
+    String prophecy, {
+    required String previous,
+    required SensorData sensor,
+    required int salt,
+  }) {
+    if (prophecy.isEmpty) {
+      return _getFallbackProphecy(sensor, salt: salt);
+    }
+    if (previous.isEmpty || prophecy != previous) return prophecy;
+
+    var alt = _getFallbackProphecy(sensor, salt: salt + 1);
+    if (alt != previous) return alt;
+
+    alt = _getFallbackProphecy(sensor, salt: salt + 2);
+    return alt == previous ? prophecy : alt;
   }
 
   Future<void> clearHistory() async {

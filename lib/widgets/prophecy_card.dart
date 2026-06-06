@@ -109,8 +109,10 @@ class _ProphecyCardState extends State<ProphecyCard>
     }
 
     try {
-      await WidgetsBinding.instance.endOfFrame;
-      await shareRepaintBoundaryAsImage(_shareImageKey);
+      await shareRepaintBoundaryAsImage(
+        _shareImageKey,
+        sharePositionOrigin: defaultSharePositionOrigin(context),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -139,7 +141,8 @@ class _ProphecyCardState extends State<ProphecyCard>
         clipBehavior: Clip.none,
         children: [
           Positioned(
-            left: -5000,
+            left: -(ProphecyShareCard.cardWidth + 40),
+            top: 0,
             child: RepaintBoundary(
               key: _shareImageKey,
               child: ProphecyShareCard(

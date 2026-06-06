@@ -33,6 +33,18 @@ class _SettingsPageState extends State<SettingsPage> {
     if (mounted) setState(() => _loadingModel = false);
   }
 
+  bool _engineReady(AiService ai) => ai.modelLoaded;
+
+  bool _canWakeEngine(AiService ai) =>
+      ai.isModelAvailable && !ai.modelLoaded;
+
+  String _engineStatusLabel(AiService ai) {
+    if (_engineReady(ai)) return '已唤醒';
+    if (_loadingModel) return '唤醒中…';
+    if (_canWakeEngine(ai)) return '唤醒';
+    return '不可用';
+  }
+
   Future<void> _confirmClearAll() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -116,26 +128,20 @@ class _SettingsPageState extends State<SettingsPage> {
                 value: sensor.isRealAmbientLight ? '真实数据' : '模拟数据',
                 isReal: sensor.isRealAmbientLight,
               ),
-              const SectionHeader(title: '预言引擎'),
-              _SettingRow(
-                icon: Icons.psychology_rounded,
-                title: 'AI 引擎',
-                value: ai.localAi.modelAvailable
-                    ? 'AI 已就绪'
-                    : ai.isModelAvailable
-                        ? (ai.modelLoaded ? 'MLX 模型' : '可用，未加载')
-                        : '本地回退模式',
-                isReal: ai.localAi.modelAvailable ||
-                    (ai.isModelAvailable && ai.modelLoaded),
-              ),
-              if (!ai.localAi.modelAvailable &&
-                  ai.isModelAvailable &&
-                  !ai.modelLoaded)
-                _ModelLoadSection(
-                  loading: _loadingModel,
-                  progress: _modelProgress,
-                  onLoad: _loadModel,
+              if (ai.localAi.modelAvailable || ai.isModelAvailable) ...[
+                const SectionHeader(title: '预言引擎'),
+                _SettingRow(
+                  icon: Icons.psychology_rounded,
+                  title: 'AI 引擎',
+                  value: _engineStatusLabel(ai),
+                  isReal: _engineReady(ai),
+                  onTap: _canWakeEngine(ai) && !_loadingModel
+                      ? _loadModel
+                      : null,
                 ),
+                if (_loadingModel && _canWakeEngine(ai))
+                  _ModelLoadProgress(progress: _modelProgress),
+              ],
               const SectionHeader(title: '数据'),
               _SettingRow(
                 icon: Icons.delete_outline_rounded,
@@ -148,7 +154,7 @@ class _SettingsPageState extends State<SettingsPage> {
               const SizedBox(height: 28),
               Center(
                 child: Text(
-                  '废话预言家 v2.0\n基于传感器数据 + 本地 MLX 模型',
+                  '废话预言家 v2.0\n使用本机小模型，数据不上传',
                   textAlign: TextAlign.center,
                   style: AppTheme.caption(context),
                 ),
@@ -219,16 +225,10 @@ class _SettingRow extends StatelessWidget {
   }
 }
 
-class _ModelLoadSection extends StatelessWidget {
-  final bool loading;
+class _ModelLoadProgress extends StatelessWidget {
   final double progress;
-  final VoidCallback onLoad;
 
-  const _ModelLoadSection({
-    required this.loading,
-    required this.progress,
-    required this.onLoad,
-  });
+  const _ModelLoadProgress({required this.progress});
 
   @override
   Widget build(BuildContext context) {
@@ -237,50 +237,21 @@ class _ModelLoadSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(
-            height: 48,
-            child: FilledButton(
-              onPressed: loading ? null : onLoad,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppTheme.primaryDark,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor:
-                    AppTheme.primary.withValues(alpha: 0.4),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                ),
-                elevation: 0,
-              ),
-              child: Text(
-                loading ? '📥 加载中…' : '📥 加载 AI 模型',
-                style: AppTheme.bodyMedium(context).copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: progress > 0 ? progress : null,
+              minHeight: 6,
+              backgroundColor: const Color(0xFFF0EBE6),
+              valueColor: const AlwaysStoppedAnimation(AppTheme.primaryDark),
             ),
           ),
-          if (loading) ...[
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(
-                value: progress > 0 ? progress : null,
-                minHeight: 6,
-                backgroundColor: const Color(0xFFF0EBE6),
-                valueColor:
-                    const AlwaysStoppedAnimation(AppTheme.primaryDark),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              progress > 0
-                  ? '${(progress * 100).round()}%'
-                  : '准备中…',
-              textAlign: TextAlign.center,
-              style: AppTheme.caption(context),
-            ),
-          ],
+          const SizedBox(height: 6),
+          Text(
+            progress > 0 ? '${(progress * 100).round()}%' : '准备中…',
+            textAlign: TextAlign.center,
+            style: AppTheme.caption(context),
+          ),
         ],
       ),
     );

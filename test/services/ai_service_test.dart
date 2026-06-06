@@ -75,6 +75,15 @@ void main() {
       expect(aiService.history.length, equals(2));
     });
 
+    test('连续生成相同传感器数据时不应重复上一条', () async {
+      final sensor = SensorData.mock();
+      final first = await aiService.generateProphecy(sensor);
+      final second = await aiService.generateProphecy(sensor);
+
+      expect(second, isNotEmpty);
+      expect(second, isNot(equals(first)));
+    });
+
     test('历史超过 30 条应自动清理旧记录', () async {
       final sensor = SensorData.mock();
       for (int i = 0; i < 35; i++) {
@@ -174,6 +183,43 @@ void main() {
       expect(prophecy, contains('电量'));
       expect(prophecy.length, lessThanOrEqualTo(45));
       expect(aiService.history.length, equals(1));
+    });
+
+    test('MLX 平台应优先于 flutter_local_ai', () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('flutter_local_ai'),
+        (methodCall) async {
+          if (methodCall.method == 'isAvailable') return true;
+          if (methodCall.method == 'initialize') return null;
+          if (methodCall.method == 'generateText') {
+            return {'text': '系统本地 AI 生成的废话'};
+          }
+          return null;
+        },
+      );
+
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (methodCall) async {
+        switch (methodCall.method) {
+          case 'isLoaded':
+            return true;
+          case 'generateProphecy':
+            return '你接下来会突然想起一件很小的事，然后笑一下';
+          default:
+            return null;
+        }
+      });
+
+      await aiService.checkModelAvailability();
+      expect(aiService.mlxPlatformSupported, isTrue);
+      expect(aiService.modelLoaded, isTrue);
+
+      final sensor = SensorData.mock();
+      final prophecy = await aiService.generateProphecy(sensor);
+
+      expect(prophecy, contains('突然想起'));
+      expect(prophecy, isNot(contains('系统本地 AI')));
     });
 
     test('ML 模型生成失败时回退到本地', () async {

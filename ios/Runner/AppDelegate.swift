@@ -17,10 +17,10 @@ import UIKit
         GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
         
         // 注册 MethodChannel 供 Dart 端调用
-        let controller = engineBridge.flutterViewController
+        let messenger = engineBridge.applicationRegistrar.messenger()
         mlChannel = FlutterMethodChannel(
             name: "com.nonsense_prophet/ml",
-            binaryMessenger: controller.binaryMessenger
+            binaryMessenger: messenger
         )
         
         mlChannel?.setMethodCallHandler { [weak self] (call, result) in

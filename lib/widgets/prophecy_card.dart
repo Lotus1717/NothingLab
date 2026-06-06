@@ -3,17 +3,20 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../config/theme.dart';
+import '../models/sensor_data.dart';
 import '../utils/prophecy_image_share.dart';
 import 'app_card.dart';
 import 'prophecy_share_card.dart';
 
 class ProphecyCard extends StatefulWidget {
   final String prophecy;
+  final SensorData? sensor;
   final VoidCallback onRefresh;
 
   const ProphecyCard({
     super.key,
     required this.prophecy,
+    this.sensor,
     required this.onRefresh,
   });
 
@@ -139,7 +142,10 @@ class _ProphecyCardState extends State<ProphecyCard>
             left: -5000,
             child: RepaintBoundary(
               key: _shareImageKey,
-              child: ProphecyShareCard(prophecy: widget.prophecy),
+              child: ProphecyShareCard(
+                prophecy: widget.prophecy,
+                sensor: widget.sensor,
+              ),
             ),
           ),
           AppCard.oracle(

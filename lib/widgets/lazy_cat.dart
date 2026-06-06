@@ -255,3 +255,31 @@ class _CatPainter extends CustomPainter {
       oldDelegate.twitchEar != twitchEar ||
       oldDelegate.loading != loading;
 }
+
+/// 分享图用的静态趴睡小猫（无动画）。
+class ShareLazyCat extends StatelessWidget {
+  final double width;
+  final double height;
+
+  const ShareLazyCat({
+    super.key,
+    this.width = 168,
+    this.height = 99,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      height: height,
+      child: CustomPaint(
+        painter: _CatPainter(
+          tailPhase: 1.1,
+          earPhase: 0.6,
+          twitchEar: 0,
+          loading: false,
+        ),
+      ),
+    );
+  }
+}

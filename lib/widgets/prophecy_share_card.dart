@@ -2,12 +2,19 @@ import 'package:flutter/material.dart';
 
 import '../config/app_fonts.dart';
 import '../config/theme.dart';
+import '../models/sensor_data.dart';
+import 'lazy_cat.dart';
 
 /// 用于生成分享图片的离屏卡片（固定宽度，样式独立于屏幕）
 class ProphecyShareCard extends StatelessWidget {
   final String prophecy;
+  final SensorData? sensor;
 
-  const ProphecyShareCard({super.key, required this.prophecy});
+  const ProphecyShareCard({
+    super.key,
+    required this.prophecy,
+    this.sensor,
+  });
 
   static const double cardWidth = 360;
 
@@ -26,85 +33,165 @@ class ProphecyShareCard extends StatelessWidget {
           ],
         ),
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        border: Border.all(
+          color: AppTheme.secondary.withValues(alpha: 0.15),
+          width: 0.8,
+        ),
       ),
-      padding: const EdgeInsets.all(28),
+      padding: const EdgeInsets.fromLTRB(28, 24, 28, 22),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text('🐣', style: TextStyle(fontSize: 22)),
-              const SizedBox(width: 8),
-              Text(
-                '废话预言家',
-                style: AppFonts.displayStyle(
-                  fontSize: 22,
-                  color: AppTheme.textDark,
-                  height: 1.3,
-                ),
-              ),
-            ],
+          const ShareLazyCat(),
+          const SizedBox(height: 12),
+          Text(
+            '废话预言家',
+            style: AppFonts.displayStyle(
+              fontSize: 20,
+              color: AppTheme.textDark,
+              height: 1.2,
+            ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 18),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
+            padding: const EdgeInsets.fromLTRB(22, 24, 22, 24),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFFFFFFFF), Color(0xFFFFFBF7)],
-              ),
-              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
               border: Border.all(
-                color: AppTheme.oracleGold.withValues(alpha: 0.35),
-                width: 1.2,
+                color: AppTheme.oracleGold.withValues(alpha: 0.28),
+                width: 1,
               ),
-              boxShadow: AppTheme.oracleGlowShadow,
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.oracleGold.withValues(alpha: 0.12),
+                  blurRadius: 18,
+                  offset: const Offset(0, 6),
+                ),
+              ],
             ),
             child: Column(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.auto_awesome_rounded,
-                        size: 14, color: AppTheme.oracleGold),
-                    const SizedBox(width: 6),
-                    Text(
-                      '今日神谕',
-                      style: AppFonts.bodyStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.oracleGold,
-                        letterSpacing: 0.6,
-                      ),
-                    ),
-                  ],
+                Text(
+                  '「',
+                  style: AppFonts.displayStyle(
+                    fontSize: 28,
+                    color: AppTheme.oracleGold.withValues(alpha: 0.55),
+                    height: 0.8,
+                  ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 4),
                 Text(
                   prophecy,
                   textAlign: TextAlign.center,
                   style: AppFonts.bodyStyle(
-                    fontSize: 18,
+                    fontSize: 19,
                     fontWeight: FontWeight.w500,
                     color: AppTheme.textDark,
-                    height: 1.6,
+                    height: 1.65,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '」',
+                  style: AppFonts.displayStyle(
+                    fontSize: 28,
+                    color: AppTheme.oracleGold.withValues(alpha: 0.55),
+                    height: 0.8,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          if (sensor != null) ...[
+            const SizedBox(height: 16),
+            _SensorSnapshot(sensor: sensor!),
+          ],
+          const SizedBox(height: 14),
           Text(
-            '基于手机传感器的无厘头预言',
+            sensor != null
+                ? '${sensor!.dayPhase} · ${sensor!.timeHint} · 戳戳小猫，听句废话'
+                : '戳戳小猫，听句废话',
+            textAlign: TextAlign.center,
             style: AppFonts.bodyStyle(
               fontSize: 11,
               color: AppTheme.textMuted,
+              height: 1.4,
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SensorSnapshot extends StatelessWidget {
+  final SensorData sensor;
+
+  const _SensorSnapshot({required this.sensor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppTheme.bgMint.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+        border: Border.all(
+          color: AppTheme.secondary.withValues(alpha: 0.18),
+          width: 0.8,
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _chip(Icons.battery_full_rounded, '${sensor.battery ?? "--"}%'),
+          _divider(),
+          _chip(
+            Icons.directions_walk_rounded,
+            sensor.isRealSteps ? '${sensor.steps}' : '--',
+          ),
+          _divider(),
+          _chip(
+            Icons.volume_up_rounded,
+            sensor.isRealVolume ? '${sensor.volume}%' : '--',
+          ),
+          _divider(),
+          _chip(
+            Icons.wb_sunny_outlined,
+            sensor.isRealAmbientLight ? '${sensor.ambientLight}lx' : '--',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _chip(IconData icon, String value) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13, color: AppTheme.secondary),
+        const SizedBox(width: 3),
+        Text(
+          value,
+          style: AppFonts.bodyStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textDark,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _divider() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Container(
+        width: 1,
+        height: 12,
+        color: AppTheme.secondary.withValues(alpha: 0.2),
       ),
     );
   }

@@ -105,6 +105,7 @@ class _HomePageState extends State<HomePage> {
                     const SizedBox(height: 20),
                     ProphecyCard(
                       prophecy: aiSvc.currentProphecy,
+                      sensor: s,
                       onRefresh: _onDicePressed,
                     ),
                   ],

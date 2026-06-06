@@ -76,7 +76,6 @@ void main() {
       expect(find.byIcon(Icons.directions_walk_rounded), findsOneWidget);
       expect(find.byIcon(Icons.volume_up_rounded), findsOneWidget);
       expect(find.byIcon(Icons.wb_sunny_outlined), findsOneWidget);
-      expect(find.textContaining(RegExp(r'移动|静止')), findsOneWidget);
 
       expect(find.bySemanticsLabel('戳戳小猫'), findsOneWidget);
     });

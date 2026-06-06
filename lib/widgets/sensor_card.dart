@@ -31,11 +31,6 @@ class SensorCard extends StatelessWidget {
           ),
           _divider(),
           _sensor(
-            Icons.sensors_rounded,
-            sensor.isMoving ? '移动' : '静止',
-          ),
-          _divider(),
-          _sensor(
             Icons.volume_up_rounded,
             sensor.isRealVolume ? '${sensor.volume}%' : '--',
           ),

@@ -55,31 +55,18 @@ class ProphecyGeneratorBridge {
     }
   }
 
-  /// 生成预言
-  Future<String> generateProphecy({
-    required int battery,
-    required int brightness,
-    required int steps,
-    required bool isMoving,
-    required int ambientLight,
-    required String timeHint,
-    required String dayPhase,
-  }) async {
+  /// 生成预言（prompt 由 [ProphecyPromptBuilder.buildChatMLPrompt] 构建）
+  Future<String> generateProphecy({required String prompt}) async {
     try {
       final result = await _channel.invokeMethod<String>('generateProphecy', {
-        'battery': battery,
-        'brightness': brightness,
-        'steps': steps,
-        'isMoving': isMoving,
-        'ambientLight': ambientLight,
-        'timeHint': timeHint,
-        'dayPhase': dayPhase,
+        'prompt': prompt,
       });
-      return result ?? '🤖 预言生成失败，再来一次？';
+      return result ?? '';
     } on PlatformException catch (e) {
-      return '🤖 梦境信号不好… ${e.message}';
+      debugPrint('ML generation failed: ${e.message}');
+      return '';
     } catch (_) {
-      return '🤖 预言生成失败，再来一次？';
+      return '';
     }
   }
 

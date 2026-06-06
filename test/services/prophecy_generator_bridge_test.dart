@@ -38,41 +38,25 @@ void main() {
       expect(await bridge.getLoadProgress(), 0.0);
     });
 
-    test('generateProphecy 应返回默认消息当平台不支持', () async {
-      final result = await bridge.generateProphecy(
-        battery: 50,
-        brightness: 60,
-        steps: 3000,
-        isMoving: true,
-        ambientLight: 200,
-        timeHint: '下午摸鱼中',
-        dayPhase: '下午',
-      );
-      expect(result, contains('🤖'));
+    test('generateProphecy 应返回空字符串当平台不支持', () async {
+      final result = await bridge.generateProphecy(prompt: '测试 prompt');
+      expect(result, isEmpty);
     });
 
     test('generateProphecy 应正常返回预言', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (methodCall) async {
         if (methodCall.method == 'generateProphecy') {
-          return '🐱 你的猫会在3分钟后挠你的拖鞋';
+          return '电量50%时，你的拇指滑屏速度会比平时快1.2倍';
         }
         return null;
       });
 
-      final result = await bridge.generateProphecy(
-        battery: 50,
-        brightness: 60,
-        steps: 3000,
-        isMoving: true,
-        ambientLight: 200,
-        timeHint: '下午摸鱼中',
-        dayPhase: '下午',
-      );
-      expect(result, '🐱 你的猫会在3分钟后挠你的拖鞋');
+      final result = await bridge.generateProphecy(prompt: '测试 prompt');
+      expect(result, '电量50%时，你的拇指滑屏速度会比平时快1.2倍');
     });
 
-    test('generateProphecy 参数应正确传递给 native', () async {
+    test('generateProphecy 应将 prompt 传递给 native', () async {
       Map<String, dynamic>? capturedArgs;
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (methodCall) async {
@@ -85,24 +69,11 @@ void main() {
         return null;
       });
 
-      await bridge.generateProphecy(
-        battery: 42,
-        brightness: 75,
-        steps: 1234,
-        isMoving: false,
-        ambientLight: 300,
-        timeHint: '中午懒洋洋',
-        dayPhase: '中午',
-      );
+      const testPrompt = '<|im_start|>system\n废话预言家\n<|im_start|>assistant';
+      await bridge.generateProphecy(prompt: testPrompt);
 
       expect(capturedArgs, isNotNull);
-      expect(capturedArgs!['battery'], 42);
-      expect(capturedArgs!['brightness'], 75);
-      expect(capturedArgs!['steps'], 1234);
-      expect(capturedArgs!['isMoving'], false);
-      expect(capturedArgs!['ambientLight'], 300);
-      expect(capturedArgs!['timeHint'], '中午懒洋洋');
-      expect(capturedArgs!['dayPhase'], '中午');
+      expect(capturedArgs!['prompt'], testPrompt);
     });
 
     test('isDownloading 应返回 false 当平台不支持', () async {
@@ -110,7 +81,6 @@ void main() {
     });
 
     test('loadModel 应优雅处理平台异常', () async {
-      // 平台不支持时不会抛出异常（catch 内部处理）
       await bridge.loadModel();
     });
 

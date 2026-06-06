@@ -57,20 +57,15 @@ import UIKit
                 }
                 
             case "generateProphecy":
-                guard let args = call.arguments as? [String: Any] else {
-                    result(FlutterError(code: "INVALID_ARGS", message: "参数错误", details: nil))
+                guard let args = call.arguments as? [String: Any],
+                      let prompt = args["prompt"] as? String else {
+                    result(FlutterError(code: "INVALID_ARGS", message: "缺少 prompt 参数", details: nil))
                     return
                 }
                 Task {
                     do {
                         let prophecy = try await MLProphecyGenerator.shared.generateProphecy(
-                            battery: args["battery"] as? Int ?? 50,
-                            brightness: args["brightness"] as? Int ?? 50,
-                            steps: args["steps"] as? Int ?? 0,
-                            isMoving: args["isMoving"] as? Bool ?? false,
-                            ambientLight: args["ambientLight"] as? Int ?? 100,
-                            timeHint: args["timeHint"] as? String ?? "",
-                            dayPhase: args["dayPhase"] as? String ?? ""
+                            prompt: prompt
                         )
                         result(prophecy)
                     } catch {

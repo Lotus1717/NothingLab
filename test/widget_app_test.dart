@@ -37,8 +37,9 @@ void main() {
       await tester.pumpWidget(const MyApp());
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
-      // 默认在首页
-      expect(find.text('🐣'), findsOneWidget);
+      // 默认在首页（hero 副标题 + 骰子引导文案）
+      expect(find.text('读取传感器，生成今日废话'), findsOneWidget);
+      expect(find.text('戳一下，听句废话'), findsOneWidget);
 
       // 切换到历史页
       await tester.tap(find.text('历史'));
@@ -53,7 +54,7 @@ void main() {
       // 切回首页
       await tester.tap(find.text('首页'));
       await tester.pumpAndSettle();
-      expect(find.text('🐣'), findsOneWidget);
+      expect(find.text('戳一下，听句废话'), findsOneWidget);
     });
   });
 
@@ -70,12 +71,14 @@ void main() {
       );
       await tester.pump();
 
-      // 传感器指标存在
-      expect(find.text('电量'), findsOneWidget);
-      expect(find.text('步数'), findsOneWidget);
-      expect(find.text('骰子按钮'), findsNWidgets(0)); // 用 emoji 渲染
+      // 传感器状态条：图标 + 数值（无「电量」「步数」文字标签）
+      expect(find.byIcon(Icons.battery_full_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.brightness_high_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.directions_walk_rounded), findsOneWidget);
+      expect(find.textContaining(RegExp(r'移动|静止')), findsOneWidget);
 
-      // 有骰子按钮（🎲）
+      // 骰子按钮用 emoji 渲染，语义标签不直接显示
+      expect(find.text('骰子按钮'), findsNWidgets(0));
       expect(find.text('🎲'), findsOneWidget);
     });
 

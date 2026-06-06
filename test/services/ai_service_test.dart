@@ -55,7 +55,7 @@ void main() {
       final prophecy = await aiService.generateProphecy(sensor);
 
       expect(prophecy, isNotEmpty);
-      expect(prophecy, contains(RegExp(r'电量|步数|亮度|状态|移动')));
+      expect(prophecy, contains(RegExp(r'电量|步数|亮度|状态|移动|检测到|当前状态|现在是')));
       expect(aiService.loading, isFalse);
     });
 
@@ -156,7 +156,7 @@ void main() {
           case 'isLoaded':
             return true;
           case 'generateProphecy':
-            return '🧠 AI 生成的深层预言：你下次眨眼会错过一只蝴蝶';
+            return '电量50%时，你的拇指滑屏速度会比平时快1.2倍';
           default:
             return null;
         }
@@ -169,7 +169,8 @@ void main() {
       final sensor = SensorData.mock();
       final prophecy = await aiService.generateProphecy(sensor);
 
-      expect(prophecy, contains('AI'));
+      expect(prophecy, contains('电量'));
+      expect(prophecy.length, lessThanOrEqualTo(45));
       expect(aiService.history.length, equals(1));
     });
 
@@ -190,7 +191,7 @@ void main() {
       final sensor = SensorData.mock();
       final prophecy = await aiService.generateProphecy(sensor);
 
-      expect(prophecy, contains(RegExp(r'电量|步数|亮度|状态|移动')));
+      expect(prophecy, contains(RegExp(r'电量|步数|亮度|状态|移动|检测到|当前状态|现在是')));
     });
   });
 }

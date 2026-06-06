@@ -20,7 +20,7 @@
 ### 前置要求
 
 - Flutter SDK 3.27+
-- Xcode 15+（iOS 17+）
+- Xcode 16+（iOS 18+）
 - 一台 Apple Silicon Mac
 
 ### 运行步骤

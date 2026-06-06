@@ -3,8 +3,11 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config/prophecy_style.dart';
 import '../models/prophecy_record.dart';
 import '../models/sensor_data.dart';
+import '../utils/prophecy_normalizer.dart';
+import '../utils/prophecy_prompt_builder.dart';
 import 'local_ai_bridge.dart';
 import 'prophecy_generator.dart';
 
@@ -155,28 +158,29 @@ class AiService extends ChangeNotifier {
     String prophecy;
 
     if (_localAi.modelAvailable) {
-      final result = await _localAi.generate(
-        battery: fresh.battery ?? 50,
-        brightness: fresh.brightness,
-        steps: fresh.steps,
-        isMoving: fresh.isMoving,
-        ambientLight: fresh.ambientLight,
-        timeHint: fresh.timeHint,
-        dayPhase: fresh.dayPhase,
+      prophecy = await _generateWithQualityGate(
+        () => _localAi.generate(
+          prompt: ProphecyPromptBuilder.buildPrompt(fresh),
+        ),
+        () => _localAi.generate(
+          prompt: ProphecyPromptBuilder.buildPrompt(fresh),
+          temperature: ProphecyStyle.retryTemperature,
+        ),
       );
-      prophecy = result ?? _getFallbackProphecy(fresh);
+      if (prophecy.isEmpty) {
+        prophecy = _getFallbackProphecy(fresh);
+      }
     } else if (_modelLoaded && _isModelAvailable) {
       try {
-        prophecy = await _bridge.generateProphecy(
-          battery: fresh.battery ?? 50,
-          brightness: fresh.brightness,
-          steps: fresh.steps,
-          isMoving: fresh.isMoving,
-          ambientLight: fresh.ambientLight,
-          timeHint: fresh.timeHint,
-          dayPhase: fresh.dayPhase,
+        prophecy = await _generateWithQualityGate(
+          () => _bridge.generateProphecy(
+            prompt: ProphecyPromptBuilder.buildChatMLPrompt(fresh),
+          ),
+          () => _bridge.generateProphecy(
+            prompt: ProphecyPromptBuilder.buildChatMLPrompt(fresh),
+          ),
         );
-        if (prophecy.startsWith('🤖')) {
+        if (prophecy.isEmpty) {
           prophecy = _getFallbackProphecy(fresh);
         }
       } catch (e) {
@@ -187,6 +191,8 @@ class AiService extends ChangeNotifier {
       await Future.delayed(const Duration(milliseconds: 800));
       prophecy = _getFallbackProphecy(fresh);
     }
+
+    prophecy = ProphecyNormalizer.normalizeProphecy(prophecy);
 
     _currentProphecy = prophecy;
     _history.insert(
@@ -207,6 +213,25 @@ class AiService extends ChangeNotifier {
     _loading = false;
     notifyListeners();
     return prophecy;
+  }
+
+  /// AI 路径：首次生成 + 质量门，不合格最多重试 1 次
+  Future<String> _generateWithQualityGate(
+    Future<String?> Function() generate,
+    Future<String?> Function() retry,
+  ) async {
+    var raw = await generate();
+    var text = ProphecyNormalizer.normalizeProphecy(raw ?? '');
+    if (text.isNotEmpty && ProphecyNormalizer.isAcceptableProphecy(text)) {
+      return text;
+    }
+
+    raw = await retry();
+    text = ProphecyNormalizer.normalizeProphecy(raw ?? '');
+    if (text.isNotEmpty && ProphecyNormalizer.isAcceptableProphecy(text)) {
+      return text;
+    }
+    return '';
   }
 
   String _getFallbackProphecy(SensorData sensor) {

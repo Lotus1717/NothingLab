@@ -1,0 +1,44 @@
+name: Build iOS
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    steps:
+      - name: 📥 Checkout 代码
+        uses: actions/checkout@v6
+
+      - name: 🐦 设置 Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: 📦 安装依赖
+        run: flutter pub get
+
+      - name: 📱 解析 Swift Package 依赖
+        run: |
+          cd ios
+          xcodebuild -resolvePackageDependencies \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -clonedSourcePackagesDirPath "$HOME/SourcePackages"
+
+      - name: 🔨 构建 iOS（无签名）
+        run: flutter build ios --release --no-codesign --no-pub
+
+      - name: 📦 打包产物
+        run: |
+          cd build/ios/iphoneos
+          ditto -c -k --sequesterRsrc --keepParent Runner.app Runner-unsigned.zip
+
+      - name: 📤 上传 iOS 产物
+        uses: actions/upload-artifact@v5
+        with:
+          name: ios-release-unsigned
+          path: build/ios/iphoneos/Runner-unsigned.zip
+          retention-days: 14

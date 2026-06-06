@@ -29,20 +29,10 @@
 # 1. 安装依赖
 flutter pub get
 
-# 2. 打开 Xcode 工作区
+# 2. 打开 Xcode 工作区（MLX 依赖已写入工程，一般无需手动添加）
 open ios/Runner.xcworkspace
 
-# 3. 添加 MLX Swift 依赖（重要！）
-# 在 Xcode 中：
-#   - File → Add Package Dependencies...
-#   - 搜索：https://github.com/ml-explore/mlx-swift
-#   - 添加以下 Package：
-#     ✅ MLX
-#     ✅ MLXLLM
-#     ✅ MLXLMCommon
-#   - Branch: main
-
-# 4. 运行
+# 3. 运行
 flutter run
 ```
 

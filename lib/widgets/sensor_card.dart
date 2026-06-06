@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import '../config/theme.dart';
 import '../models/sensor_data.dart';
 
-/// 仪表盘风格传感器状态条 — 压缩成一行
-/// 数字感营造「科学算命」的反差萌
+/// 仪表盘风格传感器状态条
 class SensorCard extends StatelessWidget {
   final SensorData sensor;
 
@@ -28,10 +27,25 @@ class SensorCard extends StatelessWidget {
           _divider(),
           _sensor(Icons.brightness_high_rounded, '${sensor.brightness}%'),
           _divider(),
-          _sensor(Icons.directions_walk_rounded, '${sensor.steps}'),
+          _sensor(
+            Icons.directions_walk_rounded,
+            sensor.isRealSteps ? '${sensor.steps}' : '--',
+          ),
           _divider(),
-          _sensor(Icons.sensors_rounded,
-              sensor.isMoving ? '移动' : '静止'),
+          _sensor(
+            Icons.sensors_rounded,
+            sensor.isMoving ? '移动' : '静止',
+          ),
+          _divider(),
+          _sensor(
+            Icons.volume_up_rounded,
+            sensor.isRealVolume ? '${sensor.volume}%' : '--',
+          ),
+          _divider(),
+          _sensor(
+            Icons.wb_sunny_outlined,
+            sensor.isRealAmbientLight ? '${sensor.ambientLight}lx' : '--',
+          ),
           const Spacer(),
           Text(
             '${sensor.dayPhase} · ${sensor.timeHint}',

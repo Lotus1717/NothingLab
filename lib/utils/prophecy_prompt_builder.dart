@@ -19,7 +19,7 @@ class ProphecyPromptBuilder {
   static const _fewShotExamples = [
     '电量72%时，你的拇指滑屏速度会比平时快1.2倍',
     '今日步数3500步，你的手指比预期早了0.3秒划到下一张图',
-    '屏幕亮度60%时，你的下一口呼吸比上一口重0.002克',
+    '系统音量45%时，你听到的下一句废话会比上一句响0.3分贝',
   ];
 
   /// LocalAi 用纯文本 prompt
@@ -35,9 +35,10 @@ class ProphecyPromptBuilder {
 - 时段：${sensor.dayPhase} · ${sensor.timeHint}
 - 电量：${sensor.battery ?? 50}%
 - 屏幕亮度：${sensor.brightness}%
+- 系统音量：${sensor.volume}%
 - 今日步数：${sensor.steps} 步
 - 身体状态：${sensor.isMoving ? '正在移动' : '静止'}
-- 环境光线：${sensor.ambientLight} lux
+- 环境光线：${sensor.ambientLight} 勒克斯
 
 预言：''';
   }
@@ -49,9 +50,10 @@ class ProphecyPromptBuilder {
 - 时段：${sensor.dayPhase} · ${sensor.timeHint}
 - 电量：${sensor.battery ?? 50}%
 - 屏幕亮度：${sensor.brightness}%
+- 系统音量：${sensor.volume}%
 - 今日步数：${sensor.steps} 步
 - 身体状态：${sensor.isMoving ? '正在移动' : '静止'}
-- 环境光线：${sensor.ambientLight} lux
+- 环境光线：${sensor.ambientLight} 勒克斯
 
 示例：
 1. ${_fewShotExamples[0]}

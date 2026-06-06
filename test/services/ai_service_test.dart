@@ -55,7 +55,7 @@ void main() {
       final prophecy = await aiService.generateProphecy(sensor);
 
       expect(prophecy, isNotEmpty);
-      expect(prophecy, contains(RegExp(r'电量|步数|亮度|状态|移动|检测到|当前状态|现在是')));
+      expect(prophecy, contains(RegExp(r'电量|步数|亮度|音量|状态|移动|检测到|当前状态|现在是')));
       expect(aiService.loading, isFalse);
     });
 
@@ -136,7 +136,9 @@ void main() {
       final sensor = SensorData.mock();
       final prophecy = await aiService.generateProphecy(sensor);
 
-      final hasSensorRef = prophecy.contains(RegExp(r'电量|步数|亮度|状态|移动'));
+      final hasSensorRef = prophecy.contains(
+        RegExp(r'电量|步数|亮度|音量|状态|移动'),
+      );
       expect(hasSensorRef, isTrue,
           reason: '预言应包括传感器引用，实际: $prophecy');
     });
@@ -191,7 +193,7 @@ void main() {
       final sensor = SensorData.mock();
       final prophecy = await aiService.generateProphecy(sensor);
 
-      expect(prophecy, contains(RegExp(r'电量|步数|亮度|状态|移动|检测到|当前状态|现在是')));
+      expect(prophecy, contains(RegExp(r'电量|步数|亮度|音量|状态|移动|检测到|当前状态|现在是')));
     });
   });
 }

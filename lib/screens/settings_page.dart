@@ -104,6 +104,18 @@ class _SettingsPageState extends State<SettingsPage> {
                 value: sensor.isRealSteps ? '真实数据' : '模拟数据',
                 isReal: sensor.isRealSteps,
               ),
+              _SettingRow(
+                icon: Icons.volume_up_rounded,
+                title: '系统音量',
+                value: sensor.isRealVolume ? '真实数据' : '模拟数据',
+                isReal: sensor.isRealVolume,
+              ),
+              _SettingRow(
+                icon: Icons.wb_sunny_outlined,
+                title: '环境光线',
+                value: sensor.isRealAmbientLight ? '真实数据' : '模拟数据',
+                isReal: sensor.isRealAmbientLight,
+              ),
               const SectionHeader(title: '预言引擎'),
               _SettingRow(
                 icon: Icons.psychology_rounded,

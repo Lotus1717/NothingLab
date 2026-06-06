@@ -57,7 +57,7 @@ class HistoryPage extends StatelessWidget {
                           child: OracleEmptyState(
                             emoji: '🍃',
                             title: '暂无记录',
-                            subtitle: '摇一摇骰子，开启第一条神谕',
+                            subtitle: '戳一下，听句废话',
                           ),
                         )
                       : _HistoryList(history: ai.history, ai: ai),

@@ -2,12 +2,15 @@ class SensorData {
   int? battery;
   bool charging = false;
   int brightness = 50;
+  int volume = 50;
   int steps = 0;
   bool isMoving = false;
-  int ambientLight = 100;
+  int ambientLight = 0;
   bool isRealBattery = false;
+  bool isRealVolume = false;
   bool isRealMotion = false;
   bool isRealSteps = false;
+  bool isRealAmbientLight = false;
   DateTime timestamp = DateTime.now();
   String timeHint = '';
   String dayPhase = '';
@@ -16,16 +19,36 @@ class SensorData {
     this.battery,
     this.charging = false,
     this.brightness = 50,
+    this.volume = 50,
     this.steps = 0,
     this.isMoving = false,
-    this.ambientLight = 100,
+    this.ambientLight = 0,
     this.isRealBattery = false,
+    this.isRealVolume = false,
     this.isRealMotion = false,
     this.isRealSteps = false,
+    this.isRealAmbientLight = false,
     required this.timestamp,
     required this.timeHint,
     required this.dayPhase,
   });
+
+  /// 启动时的中性占位数据，步数等传感器字段待真实接入后更新。
+  factory SensorData.initial() {
+    final now = DateTime.now();
+    return SensorData(
+      battery: null,
+      charging: false,
+      brightness: 50,
+      volume: 50,
+      steps: 0,
+      isMoving: false,
+      ambientLight: 0,
+      timestamp: now,
+      timeHint: timeHintFor(now),
+      dayPhase: dayPhaseFor(now),
+    );
+  }
 
   factory SensorData.mock() {
     final now = DateTime.now();
@@ -33,6 +56,7 @@ class SensorData {
       battery: 50 + (now.minute % 50),
       charging: false,
       brightness: 50 + (now.minute % 30),
+      volume: 30 + (now.minute % 70),
       steps: now.minute * 100 + 500,
       isMoving: now.minute % 3 != 0,
       ambientLight: 100 + (now.minute % 200),
@@ -75,12 +99,15 @@ class SensorData {
     int? battery,
     bool? charging,
     int? brightness,
+    int? volume,
     int? steps,
     bool? isMoving,
     int? ambientLight,
     bool? isRealBattery,
+    bool? isRealVolume,
     bool? isRealMotion,
     bool? isRealSteps,
+    bool? isRealAmbientLight,
     DateTime? timestamp,
     String? timeHint,
     String? dayPhase,
@@ -89,12 +116,15 @@ class SensorData {
       battery: battery ?? this.battery,
       charging: charging ?? this.charging,
       brightness: brightness ?? this.brightness,
+      volume: volume ?? this.volume,
       steps: steps ?? this.steps,
       isMoving: isMoving ?? this.isMoving,
       ambientLight: ambientLight ?? this.ambientLight,
       isRealBattery: isRealBattery ?? this.isRealBattery,
+      isRealVolume: isRealVolume ?? this.isRealVolume,
       isRealMotion: isRealMotion ?? this.isRealMotion,
       isRealSteps: isRealSteps ?? this.isRealSteps,
+      isRealAmbientLight: isRealAmbientLight ?? this.isRealAmbientLight,
       timestamp: timestamp ?? this.timestamp,
       timeHint: timeHint ?? this.timeHint,
       dayPhase: dayPhase ?? this.dayPhase,

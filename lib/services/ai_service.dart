@@ -125,7 +125,7 @@ class AiService extends ChangeNotifier {
     (SensorData d) =>
         '今日步数${d.steps}步，你的手指比预期早了${((d.battery ?? 50) % 7) * 0.1}秒划到下一张图',
     (SensorData d) =>
-        '屏幕亮度${d.brightness}%时，你的下一口呼吸比上一口重${(((d.battery ?? 50) % 3) + 1) * 0.001}克',
+        '系统音量${d.volume}%时，你听到的下一句废话会比上一句响${((d.volume % 5) + 1) * 0.1}分贝',
     (SensorData d) =>
         '电量${d.battery ?? 50}%且${d.isMoving ? "正在移动" : "静止"}，你接下来的路会踩到一片落叶',
     (SensorData d) =>
@@ -145,9 +145,11 @@ class AiService extends ChangeNotifier {
     (SensorData d) =>
         '现在是${d.dayPhase}，你大脑的多巴胺水平比上午低了${((d.battery ?? 50) % 20) + 5}%',
     (SensorData d) =>
-        '你的手机处于${d.brightness > 60 ? "高亮度" : "省电模式"}状态，你的心情指数也类似',
+        '屏幕亮度${d.brightness}%时，你的瞳孔会比平时多收缩${((d.brightness % 4) + 1) * 0.1}毫米',
     (SensorData d) =>
-        '检测到你在${d.timeHint}，接下来适合做创意的白日梦',
+        '环境光线${d.ambientLight}勒克斯时，你眼角余光会多捕捉到${((d.ambientLight % 3) + 1)}粒灰尘',
+    (SensorData d) =>
+        '${d.timeHint}音量${d.volume}%时，接下来适合做创意的白日梦',
   ];
 
   Future<String> generateProphecy(SensorData sensor) async {

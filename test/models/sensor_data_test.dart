@@ -4,12 +4,30 @@ import 'package:nonsense_prophet/models/sensor_data.dart';
 
 void main() {
   group('SensorData 模型', () {
+    test('initial() 应返回中性占位数据', () {
+      final data = SensorData.initial();
+      final now = DateTime.now();
+
+      expect(data.battery, isNull);
+      expect(data.volume, 50);
+      expect(data.steps, 0);
+      expect(data.isMoving, isFalse);
+      expect(data.isRealSteps, isFalse);
+      expect(data.isRealVolume, isFalse);
+      expect(data.ambientLight, 0);
+      expect(data.isRealAmbientLight, isFalse);
+      expect(data.timestamp.hour, equals(now.hour));
+      expect(data.timeHint, isNotEmpty);
+      expect(data.dayPhase, isNotEmpty);
+    });
+
     test('mock() 应返回当前时间的合理数据', () {
       final data = SensorData.mock();
       final now = DateTime.now();
 
       expect(data.battery, isNotNull);
       expect(data.brightness, isNotNull);
+      expect(data.volume, isNotNull);
       expect(data.steps, isNotNull);
       expect(data.isMoving, isNotNull);
       expect(data.ambientLight, isNotNull);
@@ -63,10 +81,12 @@ void main() {
       final data = SensorData.mock();
       final modified = data
           .copyWith(battery: 99)
+          .copyWith(volume: 80)
           .copyWith(steps: 8888)
           .copyWith(isMoving: true);
 
       expect(modified.battery, 99);
+      expect(modified.volume, 80);
       expect(modified.steps, 8888);
       expect(modified.isMoving, isTrue);
       expect(modified.brightness, data.brightness);

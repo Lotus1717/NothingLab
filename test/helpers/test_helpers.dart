@@ -45,10 +45,50 @@ void mockAllPlatformChannels() {
 
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMethodCallHandler(
-    const MethodChannel('pedometer_2'),
+    const MethodChannel('method_channel'),
     (methodCall) async {
+      if (methodCall.method == 'getStepCount') return 1234;
       return null;
     },
+  );
+
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(
+    const MethodChannel('com.kurenai7968.volume_controller.method'),
+    (methodCall) async {
+      if (methodCall.method == 'getVolume') return 0.65;
+      return null;
+    },
+  );
+
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockStreamHandler(
+    const EventChannel('com.kurenai7968.volume_controller.volume_listener_event'),
+    MockStreamHandler.inline(
+      onListen: (arguments, events) {
+        events.success(0.65);
+      },
+    ),
+  );
+
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(
+    const MethodChannel('light'),
+    (methodCall) async {
+      if (methodCall.method == 'getAuthorizationStatus') return 'authorized';
+      if (methodCall.method == 'requestAuthorization') return 'authorized';
+      return null;
+    },
+  );
+
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockStreamHandler(
+    const EventChannel('light.eventChannel'),
+    MockStreamHandler.inline(
+      onListen: (arguments, events) {
+        events.success(320);
+      },
+    ),
   );
 
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -79,7 +119,27 @@ void clearAllMocks() {
   );
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMethodCallHandler(
-    const MethodChannel('pedometer_2'),
+    const MethodChannel('method_channel'),
+    null,
+  );
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(
+    const MethodChannel('com.kurenai7968.volume_controller.method'),
+    null,
+  );
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockStreamHandler(
+    const EventChannel('com.kurenai7968.volume_controller.volume_listener_event'),
+    null,
+  );
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(
+    const MethodChannel('light'),
+    null,
+  );
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockStreamHandler(
+    const EventChannel('light.eventChannel'),
     null,
   );
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger

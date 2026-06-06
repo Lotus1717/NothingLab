@@ -45,6 +45,7 @@ void main() {
       await tester.tap(find.text('历史'));
       await tester.pumpAndSettle();
       expect(find.textContaining('小本本'), findsOneWidget);
+      expect(find.text('戳一下，听句废话'), findsOneWidget);
 
       // 切换到设置页
       await tester.tap(find.text('设置'));
@@ -75,6 +76,8 @@ void main() {
       expect(find.byIcon(Icons.battery_full_rounded), findsOneWidget);
       expect(find.byIcon(Icons.brightness_high_rounded), findsOneWidget);
       expect(find.byIcon(Icons.directions_walk_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.volume_up_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.wb_sunny_outlined), findsOneWidget);
       expect(find.textContaining(RegExp(r'移动|静止')), findsOneWidget);
 
       // 骰子按钮用 emoji 渲染，语义标签不直接显示
@@ -119,6 +122,8 @@ void main() {
       expect(find.textContaining('电池'), findsOneWidget);
       expect(find.textContaining('运动'), findsOneWidget);
       expect(find.textContaining('步数'), findsOneWidget);
+      expect(find.textContaining('系统音量'), findsOneWidget);
+      expect(find.textContaining('环境光线'), findsOneWidget);
       expect(find.textContaining('AI 引擎'), findsOneWidget);
     });
   });

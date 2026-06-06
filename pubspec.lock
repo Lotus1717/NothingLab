@@ -240,6 +240,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "3.0.2"
+  light:
+    dependency: "direct main"
+    description:
+      name: light
+      sha256: e1f9b09222881390203a3f31ab2a19e1375e067840018bbdb49a8716e849bdcb
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "5.0.0"
   lints:
     dependency: transitive
     description:
@@ -733,6 +741,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "15.2.0"
+  volume_controller:
+    dependency: "direct main"
+    description:
+      name: volume_controller
+      sha256: bed7c57b1da19d60a58e2ed598b6824754cd9af1b728b26fb966a8745c72629c
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "3.5.0"
   web:
     dependency: transitive
     description:

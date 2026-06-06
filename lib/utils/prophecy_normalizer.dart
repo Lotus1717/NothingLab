@@ -24,7 +24,7 @@ class ProphecyNormalizer {
   );
 
   static final _sensorAnchors = RegExp(
-    r'电量|步数|亮度|屏幕|移动|静止|环境|光线|lux|%|时段|早晨|中午|下午|傍晚|夜晚|手机|状态|温度|多巴胺',
+    r'电量|步数|亮度|屏幕|移动|静止|环境|光线|勒克斯|%|时段|早晨|中午|下午|傍晚|夜晚|手机|状态|温度|多巴胺|音量|分贝',
   );
 
   static final _hasNumber = RegExp(r'\d');

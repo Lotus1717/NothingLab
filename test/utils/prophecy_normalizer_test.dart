@@ -73,5 +73,15 @@ void main() {
       const text = '你今天会在3分钟后突然想起一件无关紧要的小事';
       expect(ProphecyNormalizer.isAcceptableProphecy(text), isTrue);
     });
+
+    test('含音量锚定应通过', () {
+      const text = '系统音量45%时，你听到的下一句废话会比上一句响0.3分贝';
+      expect(ProphecyNormalizer.isAcceptableProphecy(text), isTrue);
+    });
+
+    test('含环境光线锚定应通过', () {
+      const text = '环境光线320勒克斯时，你眼角余光会多捕捉到2粒灰尘';
+      expect(ProphecyNormalizer.isAcceptableProphecy(text), isTrue);
+    });
   });
 }

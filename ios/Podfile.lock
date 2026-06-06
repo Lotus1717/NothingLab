@@ -1,0 +1,34 @@
+PODS:
+  - Flutter (1.0.0)
+  - pedometer_2 (0.0.1):
+    - Flutter
+  - screen_brightness_ios (0.1.0):
+    - Flutter
+  - sensors_plus (0.0.1):
+    - Flutter
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - pedometer_2 (from `.symlinks/plugins/pedometer_2/ios`)
+  - screen_brightness_ios (from `.symlinks/plugins/screen_brightness_ios/ios`)
+  - sensors_plus (from `.symlinks/plugins/sensors_plus/ios`)
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  pedometer_2:
+    :path: ".symlinks/plugins/pedometer_2/ios"
+  screen_brightness_ios:
+    :path: ".symlinks/plugins/screen_brightness_ios/ios"
+  sensors_plus:
+    :path: ".symlinks/plugins/sensors_plus/ios"
+
+SPEC CHECKSUMS:
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  pedometer_2: b116b6b20b3d04612f28b9756b3a9feb60bba35b
+  screen_brightness_ios: 7437207a2a9bc56553aa10f782afecf830b4c4e2
+  sensors_plus: 18a9b346c43e157da17d2c8e99def703f9efb9d8
+
+PODFILE CHECKSUM: 8557ad998036028c8fd28d8c9c8b650244447f01
+
+COCOAPODS: 1.10.2

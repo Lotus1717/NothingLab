@@ -26,12 +26,23 @@ class _SettingsPageState extends State<SettingsPage> {
       _loadingModel = true;
       _modelProgress = 0;
     });
-    await context.read<AiService>().loadModel(
+    final ai = context.read<AiService>();
+    await ai.loadModel(
       onProgress: (p) {
         if (mounted) setState(() => _modelProgress = p);
       },
     );
-    if (mounted) setState(() => _loadingModel = false);
+    if (!mounted) return;
+    setState(() => _loadingModel = false);
+    if (!ai.modelLoaded && ai.lastLoadError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ai.lastLoadError!)),
+      );
+    } else if (ai.modelLoaded) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('千问小模型已唤醒')),
+      );
+    }
   }
 
   bool _engineReady(AiService ai) => ai.modelLoaded;
@@ -47,7 +58,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
   String _engineStatusLabel(AiService ai) {
     if (_engineReady(ai)) return '已唤醒';
-    if (_loadingModel) return '唤醒中…';
+    if (_loadingModel) {
+      return _modelProgress > 0 && _modelProgress < 1 ? '下载中…' : '唤醒中…';
+    }
+    if (ai.lastLoadError != null && _canWakeEngine(ai)) return '重试唤醒';
     if (_canWakeEngine(ai)) return '唤醒';
     return '不可用';
   }
@@ -147,8 +161,21 @@ class _SettingsPageState extends State<SettingsPage> {
                       ? _loadModel
                       : null,
                 ),
-                if (_loadingModel && _canWakeEngine(ai))
-                  _ModelLoadProgress(progress: _modelProgress),
+                if (_loadingModel) _ModelLoadProgress(progress: _modelProgress),
+                if (!_loadingModel &&
+                    ai.isModelAvailable &&
+                    !ai.modelLoaded &&
+                    ai.lastLoadError == null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      '首次唤醒从国内镜像下载约 200MB 千问模型，建议连接 Wi‑Fi',
+                      style: AppTheme.caption(context).copyWith(
+                        color: AppTheme.textMuted,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
               ],
               const SectionHeader(title: '数据'),
               _SettingRow(
@@ -256,7 +283,11 @@ class _ModelLoadProgress extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            progress > 0 ? '${(progress * 100).round()}%' : '准备中…',
+            progress >= 1
+                ? '完成'
+                : progress > 0
+                    ? '下载中 ${(progress * 100).round()}%'
+                    : '连接模型库…',
             textAlign: TextAlign.center,
             style: AppTheme.caption(context),
           ),

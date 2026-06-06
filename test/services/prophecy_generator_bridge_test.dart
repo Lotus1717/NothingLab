@@ -80,8 +80,18 @@ void main() {
       expect(await bridge.isDownloading(), isFalse);
     });
 
-    test('loadModel 应优雅处理平台异常', () async {
-      await bridge.loadModel();
+    test('loadModel 平台异常时应向上抛出', () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (methodCall) async {
+        if (methodCall.method == 'loadModel') {
+          throw PlatformException(
+            code: 'MODEL_LOAD_ERROR',
+            message: 'The Internet connection appears to be offline.',
+          );
+        }
+        return null;
+      });
+      expect(bridge.loadModel(), throwsA(isA<PlatformException>()));
     });
 
     test('unloadModel 不应抛出异常', () async {

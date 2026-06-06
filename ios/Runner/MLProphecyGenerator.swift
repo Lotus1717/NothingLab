@@ -1,4 +1,5 @@
 import Foundation
+import Hub
 import MLX
 import MLXLLM
 import MLXLMCommon
@@ -25,6 +26,14 @@ import MLXLMCommon
         id: "mlx-community/Qwen2.5-0.5B-4bit"
     )
 
+    /// 模型下载源：默认国内 HF 镜像，可通过 HF_ENDPOINT 覆盖
+    private static let modelHub: HubApi = {
+        let cache = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+        let endpoint =
+            ProcessInfo.processInfo.environment["HF_ENDPOINT"] ?? "https://hf-mirror.com"
+        return HubApi(downloadBase: cache, endpoint: endpoint)
+    }()
+
     /// 流式输出回调（可选）
     var onToken: ((String) -> Void)?
 
@@ -39,6 +48,7 @@ import MLXLMCommon
         }
 
         let container = try await LLMModelFactory.shared.loadContainer(
+            hub: Self.modelHub,
             configuration: modelConfig
         ) { [weak self] progress in
             let fraction = progress.fractionCompleted

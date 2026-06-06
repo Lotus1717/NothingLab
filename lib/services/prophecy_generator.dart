@@ -46,13 +46,7 @@ class ProphecyGeneratorBridge {
 
   /// 开始加载模型（首次会下载，后续从缓存加载）
   Future<void> loadModel() async {
-    try {
-      await _channel.invokeMethod('loadModel');
-    } on PlatformException catch (e) {
-      debugPrint('Model load failed: ${e.message}');
-    } catch (e) {
-      debugPrint('Model load failed: $e');
-    }
+    await _channel.invokeMethod('loadModel');
   }
 
   /// 生成预言（prompt 由 [ProphecyPromptBuilder.buildChatMLPrompt] 构建）

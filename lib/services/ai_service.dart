@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/prophecy_style.dart';
@@ -32,6 +34,7 @@ class AiService extends ChangeNotifier {
   bool _modelLoaded = false;
   bool _isModelAvailable = false;
   bool _mlxPlatformSupported = false;
+  String? _lastLoadError;
   ProphecyEngine _lastProphecyEngine = ProphecyEngine.template;
   String _currentProphecy = '';
   int _generationSeq = 0;
@@ -44,6 +47,7 @@ class AiService extends ChangeNotifier {
   bool get modelLoaded => _modelLoaded;
   bool get isModelAvailable => _isModelAvailable;
   bool get mlxPlatformSupported => _mlxPlatformSupported;
+  String? get lastLoadError => _lastLoadError;
   ProphecyEngine get lastProphecyEngine => _lastProphecyEngine;
   ProphecyEngine get plannedProphecyEngine {
     if (_shouldUseMlx()) return ProphecyEngine.qwen;
@@ -130,22 +134,34 @@ class AiService extends ChangeNotifier {
   Future<void> loadModel({void Function(double progress)? onProgress}) async {
     if (_modelLoaded) return;
 
+    _lastLoadError = null;
     _mlxPlatformSupported = await _bridge.isPlatformSupported();
     if (_mlxPlatformSupported) {
       _isModelAvailable = true;
+      Timer? progressTimer;
       try {
+        progressTimer = Timer.periodic(const Duration(milliseconds: 400), (_) {
+          unawaited(_pollLoadProgress(onProgress));
+        });
         await _bridge.loadModel();
         _modelLoaded = await _bridge.isLoaded();
         if (_modelLoaded) {
           _isModelAvailable = true;
           onProgress?.call(1.0);
         } else {
+          _lastLoadError = '模型未就绪，请检查网络后重试';
           debugPrint('MLX model load finished but isLoaded=false');
         }
+      } on PlatformException catch (e) {
+        _lastLoadError = _friendlyLoadError(e);
+        debugPrint('Model load failed: ${e.message}');
       } catch (e) {
+        _lastLoadError = '唤醒失败，请稍后重试';
         debugPrint('Model load failed: $e');
+      } finally {
+        progressTimer?.cancel();
+        notifyListeners();
       }
-      notifyListeners();
       return;
     }
 
@@ -160,6 +176,37 @@ class AiService extends ChangeNotifier {
 
   bool _shouldUseMlx() =>
       _mlxPlatformSupported && _modelLoaded && _isModelAvailable;
+
+  Future<void> _pollLoadProgress(void Function(double progress)? onProgress) async {
+    try {
+      final progress = await _bridge.getLoadProgress();
+      if (progress > 0) {
+        onProgress?.call(progress.clamp(0.0, 1.0));
+      }
+    } catch (e) {
+      debugPrint('Load progress poll failed: $e');
+    }
+  }
+
+  static String _friendlyLoadError(PlatformException e) {
+    final msg = (e.message ?? '').toLowerCase();
+    if (msg.contains('network') ||
+        msg.contains('internet') ||
+        msg.contains('offline') ||
+        msg.contains('connection') ||
+        msg.contains('timed out') ||
+        msg.contains('timeout') ||
+        msg.contains('host')) {
+      return '需联网从镜像下载约 200MB 千问模型，请检查 Wi‑Fi 或网络';
+    }
+    if (msg.contains('memory') || msg.contains('space') || msg.contains('disk')) {
+      return '存储或内存不足，请腾出空间后重试';
+    }
+    if (e.message != null && e.message!.isNotEmpty) {
+      return '唤醒失败：${e.message}';
+    }
+    return '唤醒失败，请稍后重试';
+  }
 
   static final _fallbackProphecies = [
     (SensorData d) =>

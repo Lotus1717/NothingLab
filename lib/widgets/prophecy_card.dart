@@ -145,24 +145,8 @@ class _ProphecyCardState extends State<ProphecyCard>
           AppCard.oracle(
             padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.auto_awesome_rounded,
-                        size: 16, color: AppTheme.oracleGold),
-                    const SizedBox(width: 6),
-                    Text(
-                      '今日神谕',
-                      style: AppTheme.sectionHeader(context).copyWith(
-                        color: AppTheme.oracleGold,
-                        fontSize: 12,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
                 Center(
                   child: Text(
                     _displayedText,

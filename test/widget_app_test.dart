@@ -37,15 +37,14 @@ void main() {
       await tester.pumpWidget(const MyApp());
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
-      // 默认在首页（hero 副标题 + 骰子引导文案）
-      expect(find.text('读取传感器，生成今日废话'), findsOneWidget);
-      expect(find.text('戳一下，听句废话'), findsOneWidget);
+      expect(find.text('戳戳小猫，听句废话'), findsOneWidget);
+      expect(find.text('读取传感器，生成今日废话'), findsNothing);
 
       // 切换到历史页
       await tester.tap(find.text('历史'));
       await tester.pumpAndSettle();
       expect(find.textContaining('小本本'), findsOneWidget);
-      expect(find.text('戳一下，听句废话'), findsOneWidget);
+      expect(find.text('暂无记录'), findsOneWidget);
 
       // 切换到设置页
       await tester.tap(find.text('设置'));
@@ -55,7 +54,7 @@ void main() {
       // 切回首页
       await tester.tap(find.text('首页'));
       await tester.pumpAndSettle();
-      expect(find.text('戳一下，听句废话'), findsOneWidget);
+      expect(find.text('戳戳小猫，听句废话'), findsOneWidget);
     });
   });
 
@@ -80,9 +79,7 @@ void main() {
       expect(find.byIcon(Icons.wb_sunny_outlined), findsOneWidget);
       expect(find.textContaining(RegExp(r'移动|静止')), findsOneWidget);
 
-      // 骰子按钮用 emoji 渲染，语义标签不直接显示
-      expect(find.text('骰子按钮'), findsNWidgets(0));
-      expect(find.text('🎲'), findsOneWidget);
+      expect(find.bySemanticsLabel('戳戳小猫'), findsOneWidget);
     });
 
     testWidgets('戳骰子应生成预言', (tester) async {
@@ -97,11 +94,12 @@ void main() {
       );
       await tester.pump();
 
-      // 戳骰子
-      await tester.tap(find.text('🎲'));
+      await tester.tap(find.bySemanticsLabel('戳戳小猫'));
       await tester.pump(const Duration(milliseconds: 100));
       expect(find.textContaining('小猫'), findsWidgets);
       await tester.pumpAndSettle(const Duration(seconds: 2));
+      expect(find.bySemanticsLabel('戳戳小猫'), findsOneWidget);
+      expect(find.text('再戳小猫，换一句废话'), findsOneWidget);
     });
   });
 

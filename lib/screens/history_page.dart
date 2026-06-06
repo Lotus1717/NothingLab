@@ -6,7 +6,6 @@ import '../models/prophecy_record.dart';
 import '../services/ai_service.dart';
 import '../widgets/app_card.dart';
 import '../widgets/oracle_background.dart';
-import '../widgets/oracle_empty_state.dart';
 import '../widgets/section_header.dart';
 import '../widgets/status_chip.dart';
 
@@ -24,40 +23,14 @@ class HistoryPage extends StatelessWidget {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                  child: Row(
-                    children: [
-                      Text('小本本', style: AppTheme.pageTitle(context)),
-                      const Spacer(),
-                      Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () {
-                            ai.clearHistory();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('历史已清空'),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                          },
-                          borderRadius: BorderRadius.circular(12),
-                          child: const Padding(
-                            padding: EdgeInsets.all(8),
-                            child: Icon(Icons.delete_outline_rounded,
-                                size: 22, color: AppTheme.textMuted),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  child: Text('小本本', style: AppTheme.pageTitle(context)),
                 ),
                 Expanded(
                   child: ai.history.isEmpty
                       ? Center(
-                          child: OracleEmptyState(
-                            emoji: '🍃',
-                            title: '暂无记录',
-                            subtitle: '戳一下，听句废话',
+                          child: Text(
+                            '暂无记录',
+                            style: AppTheme.caption(context),
                           ),
                         )
                       : _HistoryList(history: ai.history, ai: ai),

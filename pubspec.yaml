@@ -13,7 +13,6 @@ dependencies:
   pedometer_2: ^5.0.4
   screen_brightness: ^1.0.1
   provider: ^6.1.2
-  google_fonts: ^6.2.1
   shared_preferences: ^2.3.2
   permission_handler: ^11.3.1
   volume_controller: ^3.4.0
@@ -26,3 +25,13 @@ dev_dependencies:
   flutter_lints: ^4.0.0
 flutter:
   uses-material-design: true
+  assets:
+    - assets/fonts/
+  fonts:
+    - family: ZCOOLKuaiLe
+      fonts:
+        - asset: assets/fonts/ZCOOLKuaiLe-Regular.ttf
+          weight: 400
+    - family: NotoSansSC
+      fonts:
+        - asset: assets/fonts/NotoSansSC-Variable.ttf

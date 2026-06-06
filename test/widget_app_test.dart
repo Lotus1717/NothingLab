@@ -73,7 +73,6 @@ void main() {
 
       // 传感器状态条：图标 + 数值（无「电量」「步数」文字标签）
       expect(find.byIcon(Icons.battery_full_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.brightness_high_rounded), findsOneWidget);
       expect(find.byIcon(Icons.directions_walk_rounded), findsOneWidget);
       expect(find.byIcon(Icons.volume_up_rounded), findsOneWidget);
       expect(find.byIcon(Icons.wb_sunny_outlined), findsOneWidget);

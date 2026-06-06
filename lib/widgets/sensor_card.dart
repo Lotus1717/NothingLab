@@ -25,8 +25,6 @@ class SensorCard extends StatelessWidget {
         children: [
           _sensor(Icons.battery_full_rounded, '${sensor.battery ?? "--"}%'),
           _divider(),
-          _sensor(Icons.brightness_high_rounded, '${sensor.brightness}%'),
-          _divider(),
           _sensor(
             Icons.directions_walk_rounded,
             sensor.isRealSteps ? '${sensor.steps}' : '--',

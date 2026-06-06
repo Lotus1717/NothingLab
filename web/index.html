@@ -1,46 +1,126 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="基于手机传感器的无厘头预言 App">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="nonsense_prophet">
+  <meta name="apple-mobile-web-app-title" content="废话预言家">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
-
-  <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>nonsense_prophet</title>
+  <title>废话预言家</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #FFF8F3;
+    }
+
+    #splash {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, #FFF8F3 0%, #FFF4EC 55%, #F8F5F0 100%);
+      transition: opacity 0.36s ease;
+      font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+
+    #splash.splash--hide {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .splash__title {
+      margin: 20px 0 0;
+      font-size: 26px;
+      color: #3D2C2C;
+      letter-spacing: 0.02em;
+    }
+
+    .splash__hint {
+      margin: 8px 0 0;
+      font-size: 13px;
+      color: #9A8A8A;
+    }
+
+    .splash__cat {
+      width: 200px;
+      height: 118px;
+    }
+
+    .splash__cat .tail {
+      transform-origin: 154px 52px;
+      animation: tail-sway 3.2s ease-in-out infinite;
+    }
+
+    .splash__cat .ear-left {
+      transform-origin: 36px 33px;
+      animation: ear-sway-left 2.8s ease-in-out infinite;
+    }
+
+    .splash__cat .ear-right {
+      transform-origin: 48px 31px;
+      animation: ear-sway-right 2.8s ease-in-out infinite;
+    }
+
+    @keyframes tail-sway {
+      0%, 100% { transform: rotate(0deg); }
+      50% { transform: rotate(7deg); }
+    }
+
+    @keyframes ear-sway-left {
+      0%, 100% { transform: rotate(0deg); }
+      50% { transform: rotate(-4deg); }
+    }
+
+    @keyframes ear-sway-right {
+      0%, 100% { transform: rotate(0deg); }
+      50% { transform: rotate(4deg); }
+    }
+  </style>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
+  <div id="splash" aria-label="加载中">
+    <svg class="splash__cat" viewBox="0 0 200 118" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <g class="tail">
+        <path d="M154 52C165 45 174 28 180 17" stroke="#3A3A48" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M180 17C189 9 186 20 181 23" stroke="#3A3A48" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <path d="M34 64Q24 58 26 48Q28 34 40 30Q52 26 62 32C78 24 112 20 144 34C160 42 162 54 156 62C126 78 78 82 56 76Q42 72 34 64Z" stroke="#3A3A48" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M58 52Q82 42 108 48" stroke="#3A3A48" stroke-width="1.3" stroke-linecap="round" opacity="0.22"/>
+      <g class="ear-left">
+        <path d="M36 33Q22 12 34 28Q38 32 36 33Z" stroke="#3A3A48" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <g class="ear-right">
+        <path d="M48 31Q56 9 58 27Q52 31 48 31Z" stroke="#3A3A48" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <path d="M66 77Q72 85 78 77" stroke="#3A3A48" stroke-width="2" stroke-linecap="round"/>
+      <path d="M84 77Q90 84 96 77" stroke="#3A3A48" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <p class="splash__title">废话预言家</p>
+    <p class="splash__hint">小猫醒来中…</p>
+  </div>
 
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var splash = document.getElementById('splash');
+      if (!splash) return;
+      splash.classList.add('splash--hide');
+      window.setTimeout(function () { splash.remove(); }, 400);
+    });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
+import '../config/app_fonts.dart';
 import '../config/theme.dart';
 
 /// 用于生成分享图片的离屏卡片（固定宽度，样式独立于屏幕）
@@ -38,7 +38,7 @@ class ProphecyShareCard extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 '废话预言家',
-                style: GoogleFonts.zcoolKuaiLe(
+                style: AppFonts.displayStyle(
                   fontSize: 22,
                   color: AppTheme.textDark,
                   height: 1.3,
@@ -73,7 +73,7 @@ class ProphecyShareCard extends StatelessWidget {
                     const SizedBox(width: 6),
                     Text(
                       '今日神谕',
-                      style: GoogleFonts.notoSansSc(
+                      style: AppFonts.bodyStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: AppTheme.oracleGold,
@@ -86,7 +86,7 @@ class ProphecyShareCard extends StatelessWidget {
                 Text(
                   prophecy,
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.notoSansSc(
+                  style: AppFonts.bodyStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w500,
                     color: AppTheme.textDark,
@@ -99,7 +99,7 @@ class ProphecyShareCard extends StatelessWidget {
           const SizedBox(height: 20),
           Text(
             '基于手机传感器的无厘头预言',
-            style: GoogleFonts.notoSansSc(
+            style: AppFonts.bodyStyle(
               fontSize: 11,
               color: AppTheme.textMuted,
             ),

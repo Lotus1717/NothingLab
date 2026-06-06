@@ -2,7 +2,6 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart';
 
 /// 将 [RepaintBoundary] 渲染为 PNG 并通过系统分享面板发出
@@ -10,8 +9,6 @@ Future<void> shareRepaintBoundaryAsImage(
   GlobalKey boundaryKey, {
   String fileName = 'nonsense_prophet.png',
 }) async {
-  await GoogleFonts.pendingFonts();
-
   final boundary = boundaryKey.currentContext?.findRenderObject()
       as RenderRepaintBoundary?;
   if (boundary == null) {

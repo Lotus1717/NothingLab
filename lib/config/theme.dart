@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+
+import 'app_fonts.dart';
 
 /// 「俏皮神谕 · Playful Oracle」— 温暖极简 + 一点仪式感
 class AppTheme {
@@ -24,23 +25,21 @@ class AppTheme {
       EdgeInsets.symmetric(horizontal: 20, vertical: 16);
 
   static TextStyle displayTitle(BuildContext context) =>
-      GoogleFonts.zcoolKuaiLe(
+      AppFonts.displayStyle(
         fontSize: 26,
-        fontWeight: FontWeight.w400,
         color: textDark,
         height: 1.3,
       );
 
   static TextStyle pageTitle(BuildContext context) =>
-      GoogleFonts.zcoolKuaiLe(
+      AppFonts.displayStyle(
         fontSize: 22,
-        fontWeight: FontWeight.w400,
         color: textDark,
         height: 1.3,
       );
 
   static TextStyle sectionHeader(BuildContext context) =>
-      GoogleFonts.notoSansSc(
+      AppFonts.bodyStyle(
         fontSize: 13,
         fontWeight: FontWeight.w600,
         color: textMuted,
@@ -48,7 +47,7 @@ class AppTheme {
       );
 
   static TextStyle bodyLarge(BuildContext context) =>
-      GoogleFonts.notoSansSc(
+      AppFonts.bodyStyle(
         fontSize: 17,
         fontWeight: FontWeight.w500,
         color: textDark,
@@ -56,28 +55,25 @@ class AppTheme {
       );
 
   static TextStyle bodyMedium(BuildContext context) =>
-      GoogleFonts.notoSansSc(
+      AppFonts.bodyStyle(
         fontSize: 15,
-        fontWeight: FontWeight.w400,
         color: textDark,
         height: 1.5,
       );
 
   static TextStyle caption(BuildContext context) =>
-      GoogleFonts.notoSansSc(
+      AppFonts.bodyStyle(
         fontSize: 12,
-        fontWeight: FontWeight.w400,
         color: textMuted,
         height: 1.4,
       );
 
   static TextStyle prophecyBody(BuildContext context) =>
-      GoogleFonts.notoSansSc(
+      AppFonts.bodyStyle(
         fontSize: 18,
         fontWeight: FontWeight.w500,
         color: textDark,
         height: 1.6,
-        fontStyle: FontStyle.normal,
       );
 
   static BoxDecoration oracleGradientBg = const BoxDecoration(
@@ -125,6 +121,8 @@ class AppTheme {
       brightness: Brightness.light,
       scaffoldBackgroundColor: bg,
       primaryColor: primaryDark,
+      fontFamily: AppFonts.body,
+      fontFamilyFallback: AppFonts.fallback,
       colorScheme: const ColorScheme.light(
         primary: primaryDark,
         secondary: secondary,
@@ -136,9 +134,11 @@ class AppTheme {
     );
 
     return base.copyWith(
-      textTheme: GoogleFonts.notoSansScTextTheme(base.textTheme).apply(
+      textTheme: base.textTheme.apply(
         bodyColor: textDark,
         displayColor: textDark,
+        fontFamily: AppFonts.body,
+        fontFamilyFallback: AppFonts.fallback,
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
@@ -147,7 +147,7 @@ class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: textDark,
-        contentTextStyle: GoogleFonts.notoSansSc(
+        contentTextStyle: AppFonts.bodyStyle(
           color: Colors.white,
           fontSize: 14,
         ),
@@ -161,7 +161,7 @@ class AppTheme {
         indicatorColor: primary.withValues(alpha: 0.35),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
-          return GoogleFonts.notoSansSc(
+          return AppFonts.bodyStyle(
             fontSize: 12,
             fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
             color: selected ? primaryDark : textMuted,

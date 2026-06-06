@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" fill="none">
+  <rect width="1024" height="1024" fill="#FFF8F3"/>
+  <g transform="translate(182 318) scale(3.3)">
+    <path
+      d="M34 64Q24 58 26 48Q28 34 40 30Q52 26 62 32C78 24 112 20 144 34C160 42 162 54 156 62C126 78 78 82 56 76Q42 72 34 64Z"
+      stroke="#3A3A48"
+      stroke-width="5.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+    <path
+      d="M36 33Q22 12 34 28Q38 32 36 33Z"
+      stroke="#3A3A48"
+      stroke-width="5.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+    <path
+      d="M48 31Q56 9 58 27Q52 31 48 31Z"
+      stroke="#3A3A48"
+      stroke-width="5.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  </g>
+</svg>

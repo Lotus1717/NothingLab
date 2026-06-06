@@ -1,11 +1,11 @@
 {
-    "name": "nonsense_prophet",
-    "short_name": "nonsense_prophet",
+    "name": "废话预言家",
+    "short_name": "废话预言家",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FFF8F3",
+    "theme_color": "#FFF8F3",
+    "description": "基于手机传感器的无厘头预言 App",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

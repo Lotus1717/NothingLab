@@ -37,7 +37,11 @@ class SensorCard extends StatelessWidget {
           _divider(),
           _sensor(
             Icons.wb_sunny_outlined,
-            sensor.isRealAmbientLight ? '${sensor.ambientLight}lx' : '--',
+            sensor.isRealAmbientLight
+                ? '${sensor.ambientLight}lx'
+                : sensor.isEstimatedAmbientLight
+                    ? '~${sensor.ambientLight}lx'
+                    : '--',
           ),
           const Spacer(),
           Text(

@@ -285,7 +285,9 @@ class AiService extends ChangeNotifier {
         steps: fresh.steps,
         isMoving: fresh.isMoving,
         volume: fresh.isRealVolume ? fresh.volume : null,
-        ambientLight: fresh.isRealAmbientLight ? fresh.ambientLight : null,
+        ambientLight: fresh.isRealAmbientLight || fresh.isEstimatedAmbientLight
+            ? fresh.ambientLight
+            : null,
       ),
     );
     if (_history.length > _maxHistory) {

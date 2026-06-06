@@ -22,6 +22,16 @@ class ProphecyPromptBuilder {
     '系统音量45%时，你听到的下一句废话会比上一句响0.3分贝',
   ];
 
+  static String _ambientLightLine(SensorData sensor) {
+    if (sensor.isRealAmbientLight) {
+      return '- 环境光线：${sensor.ambientLight} 勒克斯';
+    }
+    if (sensor.isEstimatedAmbientLight) {
+      return '- 环境亮度（屏幕推算）：约 ${sensor.ambientLight} 勒克斯';
+    }
+    return '- 环境光线：未知';
+  }
+
   static String _avoidRepeatBlock(String? avoidText, int? nonce) {
     final parts = <String>[];
     if (avoidText != null && avoidText.isNotEmpty) {
@@ -55,7 +65,7 @@ class ProphecyPromptBuilder {
 - 系统音量：${sensor.volume}%
 - 今日步数：${sensor.steps} 步
 - 身体状态：${sensor.isMoving ? '正在移动' : '静止'}
-- 环境光线：${sensor.ambientLight} 勒克斯${_avoidRepeatBlock(avoidText, nonce)}
+${_ambientLightLine(sensor)}${_avoidRepeatBlock(avoidText, nonce)}
 
 预言：''';
   }
@@ -74,7 +84,7 @@ class ProphecyPromptBuilder {
 - 系统音量：${sensor.volume}%
 - 今日步数：${sensor.steps} 步
 - 身体状态：${sensor.isMoving ? '正在移动' : '静止'}
-- 环境光线：${sensor.ambientLight} 勒克斯${_avoidRepeatBlock(avoidText, nonce)}
+${_ambientLightLine(sensor)}${_avoidRepeatBlock(avoidText, nonce)}
 
 示例：
 1. ${_fewShotExamples[0]}

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../config/theme.dart';
+import '../models/sensor_data.dart';
 import '../services/ai_service.dart';
 import '../services/sensor_service.dart';
 import '../widgets/app_card.dart';
@@ -37,6 +38,12 @@ class _SettingsPageState extends State<SettingsPage> {
 
   bool _canWakeEngine(AiService ai) =>
       ai.isModelAvailable && !ai.modelLoaded;
+
+  String _ambientLightStatus(SensorData sensor) {
+    if (sensor.isRealAmbientLight) return '真实数据';
+    if (sensor.isEstimatedAmbientLight) return '亮度推算';
+    return '暂无数据';
+  }
 
   String _engineStatusLabel(AiService ai) {
     if (_engineReady(ai)) return '已唤醒';
@@ -124,9 +131,10 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               _SettingRow(
                 icon: Icons.wb_sunny_outlined,
-                title: '环境光线',
-                value: sensor.isRealAmbientLight ? '真实数据' : '模拟数据',
-                isReal: sensor.isRealAmbientLight,
+                title: '环境亮度',
+                value: _ambientLightStatus(sensor),
+                isReal:
+                    sensor.isRealAmbientLight || sensor.isEstimatedAmbientLight,
               ),
               if (ai.localAi.modelAvailable || ai.isModelAvailable) ...[
                 const SectionHeader(title: '预言引擎'),

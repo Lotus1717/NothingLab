@@ -6,7 +6,7 @@ import 'package:battery_plus/battery_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:pedometer_2/pedometer_2.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:light/light.dart';
+import 'package:light/light.dart' show Light;
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:volume_controller/volume_controller.dart';
@@ -71,6 +71,9 @@ class SensorService extends ChangeNotifier {
     _timeHintTimer?.cancel();
     _timeHintTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       _refreshTimeHints();
+      if (_usesBrightnessAmbientEstimate && _data.isEstimatedAmbientLight) {
+        unawaited(_initBrightness());
+      }
     });
   }
 
@@ -175,6 +178,15 @@ class SensorService extends ChangeNotifier {
     return lux.clamp(0, 100000);
   }
 
+  /// 用屏幕亮度粗估环境照度（iOS 默认方案，无需额外传感器授权）
+  @visibleForTesting
+  static int estimateAmbientLuxFromBrightness(int brightnessPercent) {
+    return (brightnessPercent * 6 + 30).clamp(30, 800);
+  }
+
+  bool get _usesBrightnessAmbientEstimate =>
+      !kIsWeb && Platform.isIOS;
+
   Future<bool> _requestStepPermission() async {
     if (Platform.isAndroid) {
       final status = await Permission.activityRecognition.status;
@@ -250,7 +262,12 @@ class SensorService extends ChangeNotifier {
     try {
       final current = await _screenBrightness.current;
       final percent = (current * 100).round().clamp(0, 100);
-      _data = _data.copyWith(brightness: percent);
+      _data = _data.copyWith(
+        brightness: percent,
+        ambientLight: _data.isEstimatedAmbientLight
+            ? estimateAmbientLuxFromBrightness(percent)
+            : _data.ambientLight,
+      );
       notifyListeners();
     } catch (e) {
       debugPrint('Brightness error: $e');
@@ -287,16 +304,31 @@ class SensorService extends ChangeNotifier {
     _data = _data.copyWith(
       ambientLight: parsed,
       isRealAmbientLight: true,
+      isEstimatedAmbientLight: false,
+    );
+    notifyListeners();
+  }
+
+  void _applyEstimatedAmbientLightFromBrightness() {
+    _data = _data.copyWith(
+      ambientLight: estimateAmbientLuxFromBrightness(_data.brightness),
+      isRealAmbientLight: false,
+      isEstimatedAmbientLight: true,
     );
     notifyListeners();
   }
 
   Future<void> _initAmbientLight() async {
     if (kIsWeb) return;
+
+    // iOS：不申请 SensorKit，直接用屏幕亮度推算
+    if (_usesBrightnessAmbientEstimate) {
+      _applyEstimatedAmbientLightFromBrightness();
+      return;
+    }
+
+    // Android：读取环境光传感器（无需额外运行时授权）
     try {
-      if (Platform.isIOS) {
-        await _light.requestAuthorization();
-      }
       await _lightSub?.cancel();
       _lightSub = _light.lightSensorStream.listen(
         _applyAmbientLight,

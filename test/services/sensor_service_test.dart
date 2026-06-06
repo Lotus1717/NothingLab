@@ -75,6 +75,12 @@ void main() {
       expect(SensorService.ambientLuxFromReading(120000), 100000);
     });
 
+    test('estimateAmbientLuxFromBrightness 应根据屏幕亮度粗估照度', () {
+      expect(SensorService.estimateAmbientLuxFromBrightness(0), 30);
+      expect(SensorService.estimateAmbientLuxFromBrightness(50), 330);
+      expect(SensorService.estimateAmbientLuxFromBrightness(100), 630);
+    });
+
     test('初始数据环境光线未接入时应为占位状态', () {
       final service = SensorService();
       expect(service.data.ambientLight, 0);

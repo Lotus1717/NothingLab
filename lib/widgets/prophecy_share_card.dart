@@ -129,7 +129,11 @@ class _SensorSnapshot extends StatelessWidget {
           _divider(),
           _chip(
             Icons.wb_sunny_outlined,
-            sensor.isRealAmbientLight ? '${sensor.ambientLight}lx' : '--',
+            sensor.isRealAmbientLight
+                ? '${sensor.ambientLight}lx'
+                : sensor.isEstimatedAmbientLight
+                    ? '~${sensor.ambientLight}lx'
+                    : '--',
           ),
         ],
       ),

@@ -11,6 +11,7 @@ class SensorData {
   bool isRealMotion = false;
   bool isRealSteps = false;
   bool isRealAmbientLight = false;
+  bool isEstimatedAmbientLight = false;
   DateTime timestamp = DateTime.now();
   String timeHint = '';
   String dayPhase = '';
@@ -28,6 +29,7 @@ class SensorData {
     this.isRealMotion = false,
     this.isRealSteps = false,
     this.isRealAmbientLight = false,
+    this.isEstimatedAmbientLight = false,
     required this.timestamp,
     required this.timeHint,
     required this.dayPhase,
@@ -108,6 +110,7 @@ class SensorData {
     bool? isRealMotion,
     bool? isRealSteps,
     bool? isRealAmbientLight,
+    bool? isEstimatedAmbientLight,
     DateTime? timestamp,
     String? timeHint,
     String? dayPhase,
@@ -125,6 +128,8 @@ class SensorData {
       isRealMotion: isRealMotion ?? this.isRealMotion,
       isRealSteps: isRealSteps ?? this.isRealSteps,
       isRealAmbientLight: isRealAmbientLight ?? this.isRealAmbientLight,
+      isEstimatedAmbientLight:
+          isEstimatedAmbientLight ?? this.isEstimatedAmbientLight,
       timestamp: timestamp ?? this.timestamp,
       timeHint: timeHint ?? this.timeHint,
       dayPhase: dayPhase ?? this.dayPhase,

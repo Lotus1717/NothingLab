@@ -1,103 +1,53 @@
 import '../models/sensor_data.dart';
 
-/// 唯一 prompt 源：统一风格 spec + few-shot + 传感器上下文
+/// MLX 对话 prompt（system + user，由原生侧套 Chat 模板）
+class MlxChatPrompt {
+  const MlxChatPrompt({required this.system, required this.user});
+
+  final String system;
+  final String user;
+}
+
+/// 唯一 prompt 源：短 prompt，避免模型复述题面
 class ProphecyPromptBuilder {
   ProphecyPromptBuilder._();
 
-  static const _styleSpec = '''
-你是废话预言家。根据传感器数据写一条中文预言。
-
-风格要求：
-- 32–42 字，硬上限 45 字
-- 第二人称「你」，允许句首使用
-- 冷幽默 + 荒诞因果 + 伪科学精度，不要哲理/禅意腔
-- 结构：[传感器锚定]，[荒诞预测]
-- 禁止前言、自述、emoji、英文
-- 鼓励引用传感器字段并含 1 个伪精度数字
-- 只输出预言正文，不要引号或前缀''';
-
   static const _fewShotExamples = [
     '电量72%时，你的拇指滑屏速度会比平时快1.2倍',
-    '今日步数3500步，你的手指比预期早了0.3秒划到下一张图',
-    '系统音量45%时，你听到的下一句废话会比上一句响0.3分贝',
+    '你接下来的三分钟内会突然想起一件无关紧要的小事',
+    '今天你会在电梯里和陌生人交换一个意味深长的眼神',
   ];
 
-  static String _ambientLightLine(SensorData sensor) {
-    if (sensor.isRealAmbientLight) {
-      return '- 环境光线：${sensor.ambientLight} 勒克斯';
-    }
-    if (sensor.isEstimatedAmbientLight) {
-      return '- 环境亮度（屏幕推算）：约 ${sensor.ambientLight} 勒克斯';
-    }
-    return '- 环境光线：未知';
+  static String _sensorFacts(SensorData sensor) {
+    final battery = sensor.battery ?? 50;
+    final motion = sensor.isMoving ? '移动' : '静止';
+    final light = sensor.isRealAmbientLight || sensor.isEstimatedAmbientLight
+        ? '，光线${sensor.ambientLight}勒克斯'
+        : '';
+    return '电量$battery%，亮度${sensor.brightness}%，音量${sensor.volume}%，'
+        '步数${sensor.steps}，$motion，${sensor.dayPhase}$light';
   }
 
-  static String _avoidRepeatBlock(String? avoidText, int? nonce) {
-    final parts = <String>[];
-    if (avoidText != null && avoidText.isNotEmpty) {
-      parts.add('- 上一句预言：$avoidText');
-      parts.add('- 必须写完全不同的新句子，禁止重复或改写上一句');
-    }
-    if (nonce != null) {
-      parts.add('- 本次编号：$nonce（每次编号不同，内容也必须不同）');
-    }
-    if (parts.isEmpty) return '';
-    return '\n${parts.join('\n')}';
+  /// 苹果本地 / 通用：短 completion，不把上一句写进 prompt
+  static String buildPrompt(SensorData sensor, {int? nonce}) {
+    final salt = nonce ?? 0;
+    return '''写一条中文废话预言：第二人称「你」，32-42字，冷幽默荒诞，只输出预言正文。
+
+可参考（不必写入正文）数据：${_sensorFacts(sensor)}
+风格参考：${_fewShotExamples[salt % _fewShotExamples.length]}''';
   }
 
-  /// LocalAi 用纯文本 prompt
-  static String buildPrompt(
-    SensorData sensor, {
-    String? avoidText,
-    int? nonce,
-  }) {
-    return '''$_styleSpec
+  /// MLX：system 约束格式，user 只给数据
+  static MlxChatPrompt buildMlxChat(SensorData sensor, {int? nonce}) {
+    final salt = nonce ?? 0;
+    const system = '''你是废话预言家。写一句中文废话预言。
+要求：32-42字；第二人称「你」；冷幽默荒诞；可不提及传感器数据。
+禁止：解释、题面复述、出现「上一句」「传感器」「当前状态」「写一条」等词。
+只输出预言正文一行。''';
 
-示例：
-1. ${_fewShotExamples[0]}
-2. ${_fewShotExamples[1]}
-3. ${_fewShotExamples[2]}
+    final user = '可参考数据：${_sensorFacts(sensor)}\n'
+        '风格参考：${_fewShotExamples[salt % _fewShotExamples.length]}';
 
-当前传感器：
-- 时段：${sensor.dayPhase} · ${sensor.timeHint}
-- 电量：${sensor.battery ?? 50}%
-- 屏幕亮度：${sensor.brightness}%
-- 系统音量：${sensor.volume}%
-- 今日步数：${sensor.steps} 步
-- 身体状态：${sensor.isMoving ? '正在移动' : '静止'}
-${_ambientLightLine(sensor)}${_avoidRepeatBlock(avoidText, nonce)}
-
-预言：''';
-  }
-
-  /// MLX 用 ChatML 包装
-  static String buildChatMLPrompt(
-    SensorData sensor, {
-    String? avoidText,
-    int? nonce,
-  }) {
-    final userContent = '''根据以下传感器数据写一条预言：
-
-- 时段：${sensor.dayPhase} · ${sensor.timeHint}
-- 电量：${sensor.battery ?? 50}%
-- 屏幕亮度：${sensor.brightness}%
-- 系统音量：${sensor.volume}%
-- 今日步数：${sensor.steps} 步
-- 身体状态：${sensor.isMoving ? '正在移动' : '静止'}
-${_ambientLightLine(sensor)}${_avoidRepeatBlock(avoidText, nonce)}
-
-示例：
-1. ${_fewShotExamples[0]}
-2. ${_fewShotExamples[1]}
-3. ${_fewShotExamples[2]}''';
-
-    return '''<|im_start|>system
-$_styleSpec
-<|im_end|>
-<|im_start|>user
-$userContent
-<|im_end|>
-<|im_start|>assistant
-''';
+    return MlxChatPrompt(system: system, user: user);
   }
 }

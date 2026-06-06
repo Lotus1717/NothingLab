@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../widgets/oracle_bottom_nav.dart';
-import 'history_page.dart';
+import 'favorites_page.dart';
 import 'home_page.dart';
 import 'settings_page.dart';
 
@@ -14,7 +14,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
-  final List<Widget> _pages = const [HomePage(), HistoryPage(), SettingsPage()];
+  final List<Widget> _pages = const [HomePage(), FavoritesPage(), SettingsPage()];
 
   @override
   Widget build(BuildContext context) {

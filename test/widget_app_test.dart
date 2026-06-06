@@ -29,7 +29,7 @@ void main() {
 
       // 底部导航栏
       expect(find.text('首页'), findsOneWidget);
-      expect(find.text('历史'), findsOneWidget);
+      expect(find.text('收藏'), findsOneWidget);
       expect(find.text('设置'), findsOneWidget);
     });
 
@@ -40,11 +40,11 @@ void main() {
       expect(find.text('戳戳小猫，听句废话'), findsOneWidget);
       expect(find.text('读取传感器，生成今日废话'), findsNothing);
 
-      // 切换到历史页
-      await tester.tap(find.text('历史'));
+      // 切换到收藏页
+      await tester.tap(find.text('收藏'));
       await tester.pumpAndSettle();
-      expect(find.textContaining('小本本'), findsOneWidget);
-      expect(find.text('暂无记录'), findsOneWidget);
+      expect(find.textContaining('收藏'), findsWidgets);
+      expect(find.textContaining('暂无收藏'), findsOneWidget);
 
       // 切换到设置页
       await tester.tap(find.text('设置'));
@@ -120,7 +120,7 @@ void main() {
       expect(find.textContaining('步数'), findsOneWidget);
       expect(find.textContaining('系统音量'), findsOneWidget);
       expect(find.textContaining('环境亮度'), findsOneWidget);
-      expect(find.textContaining('使用本机小模型，数据不上传'), findsOneWidget);
+      expect(find.textContaining('DeepSeek 会发送传感器摘要'), findsOneWidget);
     });
   });
 

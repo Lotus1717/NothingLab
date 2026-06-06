@@ -58,14 +58,16 @@ import UIKit
                 
             case "generateProphecy":
                 guard let args = call.arguments as? [String: Any],
-                      let prompt = args["prompt"] as? String else {
-                    result(FlutterError(code: "INVALID_ARGS", message: "缺少 prompt 参数", details: nil))
+                      let systemPrompt = args["system"] as? String,
+                      let userPrompt = args["user"] as? String else {
+                    result(FlutterError(code: "INVALID_ARGS", message: "缺少 system/user 参数", details: nil))
                     return
                 }
                 Task {
                     do {
                         let prophecy = try await MLProphecyGenerator.shared.generateProphecy(
-                            prompt: prompt
+                            systemPrompt: systemPrompt,
+                            userPrompt: userPrompt
                         )
                         result(prophecy)
                     } catch {

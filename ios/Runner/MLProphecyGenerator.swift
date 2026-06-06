@@ -1,5 +1,4 @@
 import Foundation
-import Hub
 import MLX
 import MLXLLM
 import MLXLMCommon
@@ -20,19 +19,22 @@ import MLXLMCommon
         return loadProgressValue
     }
 
-    // MARK: - 模型配置
-    /// 使用 4-bit 量化的小模型（约 200MB），适合 iPhone 本地运行
-    private let modelConfig = ModelConfiguration(
-        id: "mlx-community/Qwen2.5-0.5B-4bit"
-    )
+    // MARK: - 内置模型（Instruct 版）
+    private static let bundledModelFolder = "Qwen2.5-0.5B-Instruct-4bit"
 
-    /// 模型下载源：默认国内 HF 镜像，可通过 HF_ENDPOINT 覆盖
-    private static let modelHub: HubApi = {
-        let cache = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
-        let endpoint =
-            ProcessInfo.processInfo.environment["HF_ENDPOINT"] ?? "https://hf-mirror.com"
-        return HubApi(downloadBase: cache, endpoint: endpoint)
-    }()
+    private static let requiredModelFiles = [
+        "config.json",
+        "model.safetensors",
+        "tokenizer.json",
+        "tokenizer_config.json",
+    ]
+
+    private var modelConfig: ModelConfiguration {
+        ModelConfiguration(
+            directory: Self.bundledModelDirectory(),
+            extraEOSTokens: ["<|im_end|>", "<|endoftext|>"]
+        )
+    }
 
     /// 流式输出回调（可选）
     var onToken: ((String) -> Void)?
@@ -40,15 +42,18 @@ import MLXLMCommon
     // MARK: - 加载模型
     @objc func loadModel(progressCallback: @escaping (Double) -> Void) async throws {
         guard !isModelLoaded else { return }
-        isDownloading = true
-        loadProgressValue = 0
 
-        defer {
-            isDownloading = false
+        loadProgressValue = 0
+        DispatchQueue.main.async {
+            progressCallback(0)
+        }
+
+        let modelDirectory = Self.bundledModelDirectory()
+        guard Self.validateBundledModel(at: modelDirectory) else {
+            throw MLProphecyError.bundledModelMissing
         }
 
         let container = try await LLMModelFactory.shared.loadContainer(
-            hub: Self.modelHub,
             configuration: modelConfig
         ) { [weak self] progress in
             let fraction = progress.fractionCompleted
@@ -60,23 +65,32 @@ import MLXLMCommon
 
         self.modelContainer = container
         self.isModelLoaded = true
+        self.loadProgressValue = 1
+        DispatchQueue.main.async {
+            progressCallback(1)
+        }
     }
 
     // MARK: - 生成预言
-    @objc func generateProphecy(prompt: String) async throws -> String {
+    @objc func generateProphecy(systemPrompt: String, userPrompt: String) async throws -> String {
 
         guard let container = modelContainer else {
             throw MLProphecyError.modelNotLoaded
         }
 
         let parameters = GenerateParameters(
-            maxTokens: 64,
-            temperature: 0.85,
-            topP: 0.9
+            maxTokens: 56,
+            temperature: 0.7,
+            topP: 0.85,
+            repetitionPenalty: 1.15,
+            repetitionContextSize: 40
         )
 
         let result = try await container.perform { context in
-            let userInput = UserInput(prompt: prompt)
+            let userInput = UserInput(chat: [
+                .system(systemPrompt),
+                .user(userPrompt),
+            ])
             let input = try await context.processor.prepare(input: userInput)
             let iterator = try TokenIterator(
                 input: input, model: context.model, parameters: parameters)
@@ -87,12 +101,7 @@ import MLXLMCommon
             return generateResult
         }
 
-        // 仅做基础清理，详细截断交给 Dart normalizer
-        var prophecy = result.output.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
-        for token in ["", "<|endoftext|>"] {
-            prophecy = prophecy.replacingOccurrences(of: token, with: "")
-        }
-        return prophecy.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        return Self.cleanModelOutput(result.output)
     }
 
     // MARK: - 卸载模型（释放内存）
@@ -101,12 +110,61 @@ import MLXLMCommon
         isModelLoaded = false
         loadProgressValue = 0
     }
+
+    // MARK: - 内置模型路径
+    private static func bundledModelDirectory() -> URL {
+        // Xcode 打包后模型文件夹在 .app 根目录
+        if let url = Bundle.main.url(
+            forResource: bundledModelFolder,
+            withExtension: nil
+        ) {
+            return url
+        }
+        if let url = Bundle.main.url(
+            forResource: bundledModelFolder,
+            withExtension: nil,
+            subdirectory: "Models"
+        ) {
+            return url
+        }
+        return Bundle.main.bundleURL.appendingPathComponent(bundledModelFolder)
+    }
+
+    private static func validateBundledModel(at directory: URL) -> Bool {
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: directory.path) else { return false }
+        return requiredModelFiles.allSatisfy {
+            fm.fileExists(atPath: directory.appendingPathComponent($0).path)
+        }
+    }
+
+    private static func cleanModelOutput(_ raw: String) -> String {
+        var text = raw.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        let leakMarkers = [
+            "<|im_end|>", "<|im_start|>", "<|endoftext|>",
+            "上一句", "当前状态", "当前传感器", "传感器", "参考", "数据：", "写一条", "写一句", "示例", "编号",
+        ]
+        for marker in leakMarkers {
+            if let range = text.range(of: marker) {
+                text = String(text[..<range.lowerBound])
+            }
+        }
+        text = text
+            .replacingOccurrences(of: "\n", with: "")
+            .replacingOccurrences(of: "\r", with: "")
+            .trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+        for token in ["<|im_end|>", "<|im_start|>", "<|endoftext|>", "assistant", "user", "system"] {
+            text = text.replacingOccurrences(of: token, with: "")
+        }
+        return text.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+    }
 }
 
 // MARK: - 错误类型
 enum MLProphecyError: LocalizedError {
     case modelNotLoaded
     case generationFailed(String)
+    case bundledModelMissing
 
     var errorDescription: String? {
         switch self {
@@ -114,6 +172,8 @@ enum MLProphecyError: LocalizedError {
             return "模型尚未加载完成"
         case .generationFailed(let detail):
             return "生成失败：\(detail)"
+        case .bundledModelMissing:
+            return "内置千问模型缺失，请重新安装应用"
         }
     }
 }

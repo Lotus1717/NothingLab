@@ -11,13 +11,15 @@ import 'prophecy_share_card.dart';
 class ProphecyCard extends StatefulWidget {
   final String prophecy;
   final SensorData? sensor;
-  final VoidCallback onRefresh;
+  final bool isLiked;
+  final VoidCallback onLike;
 
   const ProphecyCard({
     super.key,
     required this.prophecy,
     this.sensor,
-    required this.onRefresh,
+    this.isLiked = false,
+    required this.onLike,
   });
 
   @override
@@ -169,10 +171,12 @@ class _ProphecyCardState extends State<ProphecyCard>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       _ActionButton(
-                        icon: Icons.refresh_rounded,
-                        label: '再来一条',
+                        icon: widget.isLiked
+                            ? Icons.favorite_rounded
+                            : Icons.favorite_border_rounded,
+                        label: widget.isLiked ? '已喜欢' : '喜欢',
                         primary: true,
-                        onPressed: widget.onRefresh,
+                        onPressed: widget.isLiked ? null : widget.onLike,
                       ),
                       const SizedBox(width: 10),
                       _ActionButton(

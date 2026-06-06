@@ -1,15 +1,18 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config/preferred_engine.dart';
 import '../config/prophecy_style.dart';
 import '../models/prophecy_record.dart';
 import '../models/sensor_data.dart';
 import '../utils/prophecy_normalizer.dart';
 import '../utils/prophecy_prompt_builder.dart';
+import 'deepseek_client.dart';
 import 'local_ai_bridge.dart';
 import 'prophecy_generator.dart';
 
@@ -17,56 +20,75 @@ import 'prophecy_generator.dart';
 enum ProphecyEngine {
   qwen,
   localAi,
+  deepseek,
   template;
 
   String get label => switch (this) {
         ProphecyEngine.qwen => '千问',
-        ProphecyEngine.localAi => '本地AI',
+        ProphecyEngine.localAi => '苹果本地',
+        ProphecyEngine.deepseek => 'DeepSeek',
         ProphecyEngine.template => '模板库',
       };
 }
 
 class AiService extends ChangeNotifier {
-  static const _historyKey = 'prophecy_history_v1';
-  static const _maxHistory = 30;
+  static const _favoritesKey = 'prophecy_favorites_v1';
+  static const _preferredEngineKey = 'preferred_engine_v2';
+  static const _deepseekApiKeyKey = 'deepseek_api_key_v1';
+  static const _maxFavorites = 30;
 
   bool _loading = false;
   bool _modelLoaded = false;
   bool _isModelAvailable = false;
   bool _mlxPlatformSupported = false;
+  bool _preferenceLoaded = false;
+  PreferredEngine _preferredEngine = PreferredEngine.apple;
+  String? _deepseekApiKey;
+  String? _lastDeepSeekError;
   String? _lastLoadError;
   ProphecyEngine _lastProphecyEngine = ProphecyEngine.template;
   String _currentProphecy = '';
   int _generationSeq = 0;
-  List<ProphecyRecord> _history = [];
+  List<ProphecyRecord> _favorites = [];
 
   final LocalAiBridge _localAi = LocalAiBridge();
   final ProphecyGeneratorBridge _bridge = ProphecyGeneratorBridge();
+  final DeepSeekClient _deepseek;
+
+  AiService({DeepSeekClient? deepseekClient})
+      : _deepseek = deepseekClient ?? DeepSeekClient() {
+    _loadFavorites();
+  }
 
   bool get loading => _loading;
   bool get modelLoaded => _modelLoaded;
   bool get isModelAvailable => _isModelAvailable;
   bool get mlxPlatformSupported => _mlxPlatformSupported;
+  PreferredEngine get preferredEngine => _preferredEngine;
+  bool get appleLocalReady =>
+      _localAi.initialized && _localAi.modelAvailable;
   String? get lastLoadError => _lastLoadError;
+  String? get lastDeepSeekError => _lastDeepSeekError;
+  bool get deepseekConfigured =>
+      _deepseekApiKey != null && _deepseekApiKey!.trim().isNotEmpty;
   ProphecyEngine get lastProphecyEngine => _lastProphecyEngine;
-  ProphecyEngine get plannedProphecyEngine {
-    if (_shouldUseMlx()) return ProphecyEngine.qwen;
-    if (_localAi.modelAvailable) return ProphecyEngine.localAi;
-    return ProphecyEngine.template;
-  }
+  ProphecyEngine get plannedProphecyEngine => switch (_preferredEngine) {
+        PreferredEngine.apple => ProphecyEngine.localAi,
+        PreferredEngine.qwen => ProphecyEngine.qwen,
+        PreferredEngine.deepseek => ProphecyEngine.deepseek,
+        PreferredEngine.template => ProphecyEngine.template,
+      };
 
-  /// 首页展示：有废话时显示上次来源，否则显示即将使用的引擎
-  ProphecyEngine get displayEngine =>
-      _currentProphecy.isNotEmpty ? _lastProphecyEngine : plannedProphecyEngine;
+  /// 首页角标：下一次戳小猫将使用的生成途径
+  ProphecyEngine get displayEngine => plannedProphecyEngine;
 
   String get currentProphecy => _currentProphecy;
   int get generationSeq => _generationSeq;
-  List<ProphecyRecord> get history => List.unmodifiable(_history);
+  List<ProphecyRecord> get favorites => List.unmodifiable(_favorites);
+  bool get isCurrentFavorited =>
+      _currentProphecy.isNotEmpty &&
+      _favorites.any((f) => f.text == _currentProphecy);
   LocalAiBridge get localAi => _localAi;
-
-  AiService() {
-    _loadHistory();
-  }
 
   static const _animalLoading = [
     '🐱 小猫正在抓阄中...',
@@ -76,33 +98,41 @@ class AiService extends ChangeNotifier {
     '🦡 獾子在推算命运...',
   ];
 
-  Future<void> _loadHistory() async {
+  Future<void> _loadFavorites() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_historyKey);
+      final raw = prefs.getString(_favoritesKey);
       if (raw == null || raw.isEmpty) return;
       final list = jsonDecode(raw) as List<dynamic>;
-      _history = list
+      _favorites = list
           .map((e) => ProphecyRecord.fromJson(e as Map<String, dynamic>))
           .toList();
       notifyListeners();
     } catch (e) {
-      debugPrint('Load history failed: $e');
+      debugPrint('Load favorites failed: $e');
     }
   }
 
-  Future<void> _saveHistory() async {
+  Future<void> _saveFavorites() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final encoded = jsonEncode(_history.map((e) => e.toJson()).toList());
-      await prefs.setString(_historyKey, encoded);
+      final encoded = jsonEncode(_favorites.map((e) => e.toJson()).toList());
+      await prefs.setString(_favoritesKey, encoded);
     } catch (e) {
-      debugPrint('Save history failed: $e');
+      debugPrint('Save favorites failed: $e');
     }
+  }
+
+  /// 与原生侧同步模型加载状态（设置页唤醒后、回前台时调用）
+  Future<void> syncModelState() async {
+    await checkModelAvailability();
   }
 
   Future<void> checkModelAvailability() async {
     _mlxPlatformSupported = await _bridge.isPlatformSupported();
+    await _localAi.initialize();
+    await _ensurePreferredEngineLoaded();
+    await _loadDeepSeekApiKey();
 
     if (_mlxPlatformSupported) {
       try {
@@ -110,25 +140,78 @@ class AiService extends ChangeNotifier {
         _isModelAvailable = true;
         _modelLoaded = loaded;
       } catch (e) {
-        _isModelAvailable = false;
+        _isModelAvailable = _mlxPlatformSupported;
         _modelLoaded = false;
         debugPrint('ML model not available: $e');
       }
-      notifyListeners();
-      return;
+    } else {
+      _isModelAvailable = appleLocalReady;
+      _modelLoaded = false;
     }
 
-    await _localAi.initialize();
-    if (_localAi.modelAvailable) {
-      _isModelAvailable = true;
-      _modelLoaded = true;
-      notifyListeners();
-      return;
-    }
-
-    _isModelAvailable = false;
-    _modelLoaded = false;
     notifyListeners();
+  }
+
+  Future<void> setDeepSeekApiKey(String key) async {
+    final trimmed = key.trim();
+    _deepseekApiKey = trimmed.isEmpty ? null : trimmed;
+    _lastDeepSeekError = null;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (_deepseekApiKey == null) {
+        await prefs.remove(_deepseekApiKeyKey);
+      } else {
+        await prefs.setString(_deepseekApiKeyKey, _deepseekApiKey!);
+      }
+    } catch (e) {
+      debugPrint('Save DeepSeek API key failed: $e');
+    }
+    notifyListeners();
+  }
+
+  Future<void> _loadDeepSeekApiKey() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString(_deepseekApiKeyKey);
+      _deepseekApiKey =
+          saved != null && saved.trim().isNotEmpty ? saved.trim() : null;
+    } catch (e) {
+      debugPrint('Load DeepSeek API key failed: $e');
+      _deepseekApiKey = null;
+    }
+  }
+
+  Future<void> setPreferredEngine(PreferredEngine engine) async {
+    _preferredEngine = engine;
+    _preferenceLoaded = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_preferredEngineKey, engine.storageValue);
+    } catch (e) {
+      debugPrint('Save preferred engine failed: $e');
+    }
+    notifyListeners();
+  }
+
+  Future<void> _ensurePreferredEngineLoaded() async {
+    if (_preferenceLoaded) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = PreferredEngine.fromStorage(
+        prefs.getString(_preferredEngineKey),
+      );
+      _preferredEngine = saved ?? _defaultPreferredEngine();
+    } catch (e) {
+      debugPrint('Load preferred engine failed: $e');
+      _preferredEngine = _defaultPreferredEngine();
+    }
+    _preferenceLoaded = true;
+  }
+
+  PreferredEngine _defaultPreferredEngine() {
+    if (!kIsWeb && Platform.isIOS) return PreferredEngine.apple;
+    if (_mlxPlatformSupported) return PreferredEngine.qwen;
+    return PreferredEngine.template;
   }
 
   Future<void> loadModel({void Function(double progress)? onProgress}) async {
@@ -136,46 +219,48 @@ class AiService extends ChangeNotifier {
 
     _lastLoadError = null;
     _mlxPlatformSupported = await _bridge.isPlatformSupported();
-    if (_mlxPlatformSupported) {
-      _isModelAvailable = true;
-      Timer? progressTimer;
-      try {
-        progressTimer = Timer.periodic(const Duration(milliseconds: 400), (_) {
-          unawaited(_pollLoadProgress(onProgress));
-        });
-        await _bridge.loadModel();
-        _modelLoaded = await _bridge.isLoaded();
-        if (_modelLoaded) {
-          _isModelAvailable = true;
-          onProgress?.call(1.0);
-        } else {
-          _lastLoadError = '模型未就绪，请检查网络后重试';
-          debugPrint('MLX model load finished but isLoaded=false');
-        }
-      } on PlatformException catch (e) {
-        _lastLoadError = _friendlyLoadError(e);
-        debugPrint('Model load failed: ${e.message}');
-      } catch (e) {
-        _lastLoadError = '唤醒失败，请稍后重试';
-        debugPrint('Model load failed: $e');
-      } finally {
-        progressTimer?.cancel();
-        notifyListeners();
-      }
+    if (!_mlxPlatformSupported) {
+      _lastLoadError = '当前设备不支持内置千问模型';
+      notifyListeners();
       return;
     }
 
-    await _localAi.initialize();
-    if (_localAi.modelAvailable) {
-      _modelLoaded = true;
-      _isModelAvailable = true;
-      onProgress?.call(1.0);
+    _isModelAvailable = true;
+    Timer? progressTimer;
+    try {
+      progressTimer = Timer.periodic(const Duration(milliseconds: 400), (_) {
+        unawaited(_pollLoadProgress(onProgress));
+      });
+      await _bridge.loadModel();
+      _modelLoaded = await _bridge.isLoaded();
+      if (_modelLoaded) {
+        onProgress?.call(1.0);
+      } else {
+        _lastLoadError = '内置模型加载未完成，请重试';
+        debugPrint('MLX model load finished but isLoaded=false');
+      }
+    } on PlatformException catch (e) {
+      _lastLoadError = _friendlyLoadError(e);
+      debugPrint('Model load failed: ${e.message}');
+    } catch (e) {
+      _lastLoadError = '唤醒失败，请稍后重试';
+      debugPrint('Model load failed: $e');
+    } finally {
+      progressTimer?.cancel();
       notifyListeners();
     }
   }
 
   bool _shouldUseMlx() =>
-      _mlxPlatformSupported && _modelLoaded && _isModelAvailable;
+      _preferredEngine == PreferredEngine.qwen &&
+      _mlxPlatformSupported &&
+      _modelLoaded;
+
+  bool _shouldUseAppleLocal() =>
+      _preferredEngine == PreferredEngine.apple && appleLocalReady;
+
+  bool _shouldUseDeepSeek() =>
+      _preferredEngine == PreferredEngine.deepseek && deepseekConfigured;
 
   Future<void> _pollLoadProgress(void Function(double progress)? onProgress) async {
     try {
@@ -190,14 +275,8 @@ class AiService extends ChangeNotifier {
 
   static String _friendlyLoadError(PlatformException e) {
     final msg = (e.message ?? '').toLowerCase();
-    if (msg.contains('network') ||
-        msg.contains('internet') ||
-        msg.contains('offline') ||
-        msg.contains('connection') ||
-        msg.contains('timed out') ||
-        msg.contains('timeout') ||
-        msg.contains('host')) {
-      return '需联网从镜像下载约 200MB 千问模型，请检查 Wi‑Fi 或网络';
+    if (msg.contains('missing') || msg.contains('bundled') || msg.contains('内置')) {
+      return '内置模型文件缺失，请重新安装应用';
     }
     if (msg.contains('memory') || msg.contains('space') || msg.contains('disk')) {
       return '存储或内存不足，请腾出空间后重试';
@@ -254,48 +333,18 @@ class AiService extends ChangeNotifier {
     String prophecy;
     ProphecyEngine engine;
 
-    if (_shouldUseMlx()) {
-      try {
-        prophecy = await _generateWithQualityGate(
-          () => _bridge.generateProphecy(
-            prompt: ProphecyPromptBuilder.buildChatMLPrompt(
-              fresh,
-              avoidText: previous,
-              nonce: nonce,
-            ),
-          ),
-          () => _bridge.generateProphecy(
-            prompt: ProphecyPromptBuilder.buildChatMLPrompt(
-              fresh,
-              avoidText: previous,
-              nonce: nonce + 1000,
-            ),
-          ),
-        );
-        if (prophecy.isEmpty) {
-          prophecy = _getFallbackProphecy(fresh, salt: nonce);
-          engine = ProphecyEngine.template;
-        } else {
-          engine = ProphecyEngine.qwen;
-        }
-      } catch (e) {
-        debugPrint('ML generation failed, using fallback: $e');
-        prophecy = _getFallbackProphecy(fresh, salt: nonce);
-        engine = ProphecyEngine.template;
-      }
-    } else if (_localAi.modelAvailable) {
+    if (_preferredEngine == PreferredEngine.template) {
+      await Future.delayed(const Duration(milliseconds: 800));
+      prophecy = _getFallbackProphecy(fresh, salt: nonce);
+      engine = ProphecyEngine.template;
+    } else if (_shouldUseAppleLocal()) {
       prophecy = await _generateWithQualityGate(
         () => _localAi.generate(
-          prompt: ProphecyPromptBuilder.buildPrompt(
-            fresh,
-            avoidText: previous,
-            nonce: nonce,
-          ),
+          prompt: ProphecyPromptBuilder.buildPrompt(fresh, nonce: nonce),
         ),
         () => _localAi.generate(
           prompt: ProphecyPromptBuilder.buildPrompt(
             fresh,
-            avoidText: previous,
             nonce: nonce + 1000,
           ),
           temperature: ProphecyStyle.retryTemperature,
@@ -307,6 +356,53 @@ class AiService extends ChangeNotifier {
       } else {
         engine = ProphecyEngine.localAi;
       }
+    } else if (_shouldUseMlx()) {
+      try {
+        prophecy = await _generateMlxWithQualityGate(fresh, nonce: nonce);
+        if (prophecy.isEmpty) {
+          prophecy = _getFallbackProphecy(fresh, salt: nonce);
+          engine = ProphecyEngine.template;
+        } else {
+          engine = ProphecyEngine.qwen;
+        }
+      } catch (e) {
+        debugPrint('ML generation failed, using fallback: $e');
+        prophecy = _getFallbackProphecy(fresh, salt: nonce);
+        engine = ProphecyEngine.template;
+      }
+    } else if (_shouldUseDeepSeek()) {
+      try {
+        _lastDeepSeekError = null;
+        prophecy = await _generateWithQualityGate(
+          () => _deepseek.generate(
+            apiKey: _deepseekApiKey!,
+            sensor: fresh,
+            nonce: nonce,
+          ),
+          () => _deepseek.generate(
+            apiKey: _deepseekApiKey!,
+            sensor: fresh,
+            nonce: nonce + 1000,
+            temperature: ProphecyStyle.retryTemperature,
+          ),
+        );
+        if (prophecy.isEmpty) {
+          prophecy = _getFallbackProphecy(fresh, salt: nonce);
+          engine = ProphecyEngine.template;
+        } else {
+          engine = ProphecyEngine.deepseek;
+        }
+      } on DeepSeekException catch (e) {
+        _lastDeepSeekError = e.message;
+        debugPrint('DeepSeek generation failed: ${e.message}');
+        prophecy = _getFallbackProphecy(fresh, salt: nonce);
+        engine = ProphecyEngine.template;
+      } catch (e) {
+        _lastDeepSeekError = '云端生成失败，请稍后重试';
+        debugPrint('DeepSeek generation failed: $e');
+        prophecy = _getFallbackProphecy(fresh, salt: nonce);
+        engine = ProphecyEngine.template;
+      }
     } else {
       await Future.delayed(const Duration(milliseconds: 800));
       prophecy = _getFallbackProphecy(fresh, salt: nonce);
@@ -314,37 +410,47 @@ class AiService extends ChangeNotifier {
     }
 
     prophecy = ProphecyNormalizer.normalizeProphecy(prophecy);
-    prophecy = _ensureDistinctProphecy(
+    final distinct = _ensureDistinctProphecy(
       prophecy,
       previous: previous,
       sensor: fresh,
       salt: nonce,
     );
+    if (distinct != prophecy &&
+        (engine == ProphecyEngine.qwen || engine == ProphecyEngine.deepseek)) {
+      engine = ProphecyEngine.template;
+    }
+    prophecy = distinct;
 
     _lastProphecyEngine = engine;
     _currentProphecy = prophecy;
-    _history.insert(
-      0,
-      ProphecyRecord.fromSensor(
-        text: prophecy,
-        battery: fresh.battery,
-        brightness: fresh.brightness,
-        steps: fresh.steps,
-        isMoving: fresh.isMoving,
-        volume: fresh.isRealVolume ? fresh.volume : null,
-        ambientLight: fresh.isRealAmbientLight || fresh.isEstimatedAmbientLight
-            ? fresh.ambientLight
-            : null,
-      ),
-    );
-    if (_history.length > _maxHistory) {
-      _history.removeLast();
-    }
-    await _saveHistory();
 
     _loading = false;
     notifyListeners();
     return prophecy;
+  }
+
+  /// MLX 路径：结构化 chat + 传感器锚定质量门，不合格最多重试 1 次
+  Future<String> _generateMlxWithQualityGate(
+    SensorData sensor, {
+    required int nonce,
+  }) async {
+    Future<String?> generate(int salt) async {
+      final chat = ProphecyPromptBuilder.buildMlxChat(
+        sensor,
+        nonce: nonce + salt,
+      );
+      final raw = await _bridge.generateProphecy(
+        systemPrompt: chat.system,
+        userPrompt: chat.user,
+      );
+      if (ProphecyNormalizer.isMlxProphecy(raw, sensor)) {
+        return ProphecyNormalizer.normalizeProphecy(raw);
+      }
+      return null;
+    }
+
+    return (await generate(0)) ?? (await generate(1000)) ?? '';
   }
 
   /// AI 路径：首次生成 + 质量门，不合格最多重试 1 次
@@ -403,16 +509,44 @@ class AiService extends ChangeNotifier {
     return alt == previous ? prophecy : alt;
   }
 
-  Future<void> clearHistory() async {
-    _history.clear();
-    await _saveHistory();
+  /// 收藏当前展示的废话；已收藏则返回 false
+  Future<bool> likeCurrentProphecy(SensorData sensor) async {
+    final text = _currentProphecy;
+    if (text.isEmpty || isCurrentFavorited) return false;
+
+    _favorites.insert(
+      0,
+      ProphecyRecord.fromSensor(
+        text: text,
+        battery: sensor.battery,
+        brightness: sensor.brightness,
+        steps: sensor.steps,
+        isMoving: sensor.isMoving,
+        volume: sensor.isRealVolume ? sensor.volume : null,
+        ambientLight:
+            sensor.isRealAmbientLight || sensor.isEstimatedAmbientLight
+                ? sensor.ambientLight
+                : null,
+      ),
+    );
+    if (_favorites.length > _maxFavorites) {
+      _favorites.removeLast();
+    }
+    await _saveFavorites();
+    notifyListeners();
+    return true;
+  }
+
+  Future<void> clearFavorites() async {
+    _favorites.clear();
+    await _saveFavorites();
     notifyListeners();
   }
 
-  Future<void> deleteHistory(int i) async {
-    if (i >= 0 && i < _history.length) {
-      _history.removeAt(i);
-      await _saveHistory();
+  Future<void> deleteFavorite(int i) async {
+    if (i >= 0 && i < _favorites.length) {
+      _favorites.removeAt(i);
+      await _saveFavorites();
       notifyListeners();
     }
   }

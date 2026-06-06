@@ -24,7 +24,7 @@ void main() {
     await tester.pumpAndSettle(const Duration(seconds: 2));
 
     expect(find.text('首页'), findsOneWidget);
-    expect(find.text('历史'), findsOneWidget);
+    expect(find.text('收藏'), findsOneWidget);
     expect(find.text('设置'), findsOneWidget);
   });
 }

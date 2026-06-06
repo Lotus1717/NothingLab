@@ -39,7 +39,10 @@ void main() {
     });
 
     test('generateProphecy 应返回空字符串当平台不支持', () async {
-      final result = await bridge.generateProphecy(prompt: '测试 prompt');
+      final result = await bridge.generateProphecy(
+        systemPrompt: 'system',
+        userPrompt: 'user',
+      );
       expect(result, isEmpty);
     });
 
@@ -52,11 +55,14 @@ void main() {
         return null;
       });
 
-      final result = await bridge.generateProphecy(prompt: '测试 prompt');
+      final result = await bridge.generateProphecy(
+        systemPrompt: 'system',
+        userPrompt: 'user',
+      );
       expect(result, '电量50%时，你的拇指滑屏速度会比平时快1.2倍');
     });
 
-    test('generateProphecy 应将 prompt 传递给 native', () async {
+    test('generateProphecy 应将 system/user 传递给 native', () async {
       Map<String, dynamic>? capturedArgs;
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (methodCall) async {
@@ -69,11 +75,14 @@ void main() {
         return null;
       });
 
-      const testPrompt = '<|im_start|>system\n废话预言家\n<|im_start|>assistant';
-      await bridge.generateProphecy(prompt: testPrompt);
+      await bridge.generateProphecy(
+        systemPrompt: '你是废话预言家',
+        userPrompt: '电量50%，写一条预言',
+      );
 
       expect(capturedArgs, isNotNull);
-      expect(capturedArgs!['prompt'], testPrompt);
+      expect(capturedArgs!['system'], '你是废话预言家');
+      expect(capturedArgs!['user'], '电量50%，写一条预言');
     });
 
     test('isDownloading 应返回 false 当平台不支持', () async {

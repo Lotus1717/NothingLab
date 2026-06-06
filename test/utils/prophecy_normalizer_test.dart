@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nonsense_prophet/config/prophecy_style.dart';
+import 'package:nonsense_prophet/models/sensor_data.dart';
 import 'package:nonsense_prophet/utils/prophecy_normalizer.dart';
 
 void main() {
@@ -64,13 +65,8 @@ void main() {
       expect(ProphecyNormalizer.isAcceptableProphecy(text), isFalse);
     });
 
-    test('无传感器锚定且无数字应被拒绝', () {
+    test('无传感器锚定也应通过', () {
       const text = '你今天会突然想起一件无关紧要的小事';
-      expect(ProphecyNormalizer.isAcceptableProphecy(text), isFalse);
-    });
-
-    test('含数字但无传感器锚定应通过', () {
-      const text = '你今天会在3分钟后突然想起一件无关紧要的小事';
       expect(ProphecyNormalizer.isAcceptableProphecy(text), isTrue);
     });
 
@@ -82,6 +78,30 @@ void main() {
     test('含环境光线锚定应通过', () {
       const text = '环境光线320勒克斯时，你眼角余光会多捕捉到2粒灰尘';
       expect(ProphecyNormalizer.isAcceptableProphecy(text), isTrue);
+    });
+  });
+
+  group('isMlxProphecy', () {
+    test('应接受不含传感器数据的废话', () {
+      final sensor = SensorData.mock().copyWith(battery: 72, steps: 3500);
+      const grounded = '电量七成时，你的拇指滑屏速度会比平时快1.2倍';
+      const ungrounded = '你今天会在三分钟后突然想起一件无关紧要的小事';
+
+      expect(ProphecyNormalizer.isMlxProphecy(grounded, sensor), isTrue);
+      expect(ProphecyNormalizer.isMlxProphecy(ungrounded, sensor), isTrue);
+    });
+
+    test('应去除换行与尾部提示词泄漏', () {
+      const raw = '电量72%时，你的拇指会比平时快1.2倍\n请根据以上数据写一条';
+      final result = ProphecyNormalizer.normalizeProphecy(raw);
+      expect(result, '电量72%时，你的拇指会比平时快1.2倍');
+      expect(result.contains('\n'), isFalse);
+    });
+
+    test('应识别上一句复述为 prompt 泄漏', () {
+      const raw = '上一句是电量50%时你的拇指会快1.2倍，今日你会突然想起一件小事';
+      expect(ProphecyNormalizer.isPromptEcho(raw), isTrue);
+      expect(ProphecyNormalizer.isAcceptableProphecy(raw), isFalse);
     });
   });
 }

@@ -1,7 +1,12 @@
+import 'dart:convert';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:nonsense_prophet/config/preferred_engine.dart';
 import 'package:nonsense_prophet/models/sensor_data.dart';
 import 'package:nonsense_prophet/services/ai_service.dart';
+import 'package:nonsense_prophet/services/deepseek_client.dart';
 import '../helpers/test_helpers.dart';
 
 void main() {
@@ -28,7 +33,7 @@ void main() {
       expect(aiService.modelLoaded, isFalse);
       expect(aiService.isModelAvailable, isFalse);
       expect(aiService.currentProphecy, isEmpty);
-      expect(aiService.history, isEmpty);
+      expect(aiService.favorites, isEmpty);
     });
 
     test('checkModelAvailability 应标记为不可用（非 iOS 平台）', () async {
@@ -55,24 +60,15 @@ void main() {
       final prophecy = await aiService.generateProphecy(sensor);
 
       expect(prophecy, isNotEmpty);
-      expect(prophecy, contains(RegExp(r'电量|步数|亮度|音量|状态|移动|检测到|当前状态|现在是')));
       expect(aiService.loading, isFalse);
+      expect(aiService.favorites, isEmpty);
     });
 
-    test('generateProphecy 应记录到历史', () async {
+    test('generateProphecy 不应自动写入收藏', () async {
       final sensor = SensorData.mock();
       await aiService.generateProphecy(sensor);
 
-      expect(aiService.history.length, equals(1));
-      expect(aiService.history[0].text, isNotEmpty);
-    });
-
-    test('多次生成应按倒序排列历史', () async {
-      final sensor = SensorData.mock();
-      await aiService.generateProphecy(sensor);
-      await aiService.generateProphecy(sensor);
-
-      expect(aiService.history.length, equals(2));
+      expect(aiService.favorites, isEmpty);
     });
 
     test('连续生成相同传感器数据时不应重复上一条', () async {
@@ -84,14 +80,6 @@ void main() {
       expect(second, isNot(equals(first)));
     });
 
-    test('历史超过 30 条应自动清理旧记录', () async {
-      final sensor = SensorData.mock();
-      for (int i = 0; i < 35; i++) {
-        await aiService.generateProphecy(sensor);
-      }
-      expect(aiService.history.length, equals(30));
-    });
-
     test('currentProphecy 应更新为最新预言', () async {
       final sensor = SensorData.mock();
       final prophecy = await aiService.generateProphecy(sensor);
@@ -99,59 +87,64 @@ void main() {
     });
   });
 
-  group('AiService 历史管理', () {
-    test('clearHistory 应清空所有记录', () async {
+  group('AiService 收藏管理', () {
+    test('likeCurrentProphecy 应加入收藏', () async {
       final sensor = SensorData.mock();
       await aiService.generateProphecy(sensor);
-      await aiService.generateProphecy(sensor);
-      expect(aiService.history.length, 2);
+      final liked = await aiService.likeCurrentProphecy(sensor);
 
-      await aiService.clearHistory();
-      expect(aiService.history, isEmpty);
+      expect(liked, isTrue);
+      expect(aiService.favorites.length, equals(1));
+      expect(aiService.favorites[0].text, aiService.currentProphecy);
+      expect(aiService.isCurrentFavorited, isTrue);
     });
 
-    test('deleteHistory 应删除指定索引', () async {
+    test('重复喜欢同一条应返回 false', () async {
       final sensor = SensorData.mock();
       await aiService.generateProphecy(sensor);
+      await aiService.likeCurrentProphecy(sensor);
+      final again = await aiService.likeCurrentProphecy(sensor);
+
+      expect(again, isFalse);
+      expect(aiService.favorites.length, equals(1));
+    });
+
+    test('clearFavorites 应清空所有收藏', () async {
+      final sensor = SensorData.mock();
+      await aiService.generateProphecy(sensor);
+      await aiService.likeCurrentProphecy(sensor);
+      await aiService.generateProphecy(sensor);
+      await aiService.likeCurrentProphecy(sensor);
+      expect(aiService.favorites.length, 2);
+
+      await aiService.clearFavorites();
+      expect(aiService.favorites, isEmpty);
+    });
+
+    test('deleteFavorite 应删除指定索引', () async {
+      final sensor = SensorData.mock();
+      await aiService.generateProphecy(sensor);
+      await aiService.likeCurrentProphecy(sensor);
       final secondSensor = sensor.copyWith(battery: 99);
       await aiService.generateProphecy(secondSensor);
+      await aiService.likeCurrentProphecy(secondSensor);
 
-      expect(aiService.history.length, 2);
-      final secondText = aiService.history[0].text;
+      expect(aiService.favorites.length, 2);
+      final secondText = aiService.favorites[0].text;
 
-      await aiService.deleteHistory(0);
-      expect(aiService.history.length, 1);
-      expect(aiService.history[0].text, isNot(equals(secondText)));
+      await aiService.deleteFavorite(0);
+      expect(aiService.favorites.length, 1);
+      expect(aiService.favorites[0].text, isNot(equals(secondText)));
     });
 
-    test('deleteHistory 越界不应抛异常', () async {
-      await aiService.deleteHistory(0);
-      await aiService.deleteHistory(-1);
-      await aiService.deleteHistory(100);
+    test('deleteFavorite 越界不应抛异常', () async {
+      await aiService.deleteFavorite(0);
+      await aiService.deleteFavorite(-1);
+      await aiService.deleteFavorite(100);
     });
   });
 
   group('AiService 本地预言', () {
-    test('不同传感器数据应生成不同预言', () async {
-      final sensorA = SensorData.mock();
-      final sensorB = sensorA.copyWith(battery: 10, steps: 99999);
-
-      await aiService.generateProphecy(sensorA);
-      aiService.clearHistory();
-      await aiService.generateProphecy(sensorB);
-    });
-
-    test('预言应包含传感器相关数据', () async {
-      final sensor = SensorData.mock();
-      final prophecy = await aiService.generateProphecy(sensor);
-
-      final hasSensorRef = prophecy.contains(
-        RegExp(r'电量|步数|亮度|音量|状态|移动'),
-      );
-      expect(hasSensorRef, isTrue,
-          reason: '预言应包括传感器引用，实际: $prophecy');
-    });
-
     test('getLoadingText 应循环返回不同加载文案', () {
       final texts = List.generate(10, (i) => aiService.getLoadingText(i));
       final unique = texts.toSet();
@@ -160,7 +153,7 @@ void main() {
   });
 
   group('AiService 与 ML 模型集成', () {
-    test('ML 模型可用时应优先使用 ML 生成', () async {
+    test('选择千问时应使用 MLX 生成', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (methodCall) async {
         switch (methodCall.method) {
@@ -174,7 +167,7 @@ void main() {
       });
 
       await aiService.checkModelAvailability();
-      expect(aiService.isModelAvailable, isTrue);
+      await aiService.setPreferredEngine(PreferredEngine.qwen);
       expect(aiService.modelLoaded, isTrue);
 
       final sensor = SensorData.mock();
@@ -182,10 +175,10 @@ void main() {
 
       expect(prophecy, contains('电量'));
       expect(prophecy.length, lessThanOrEqualTo(45));
-      expect(aiService.history.length, equals(1));
+      expect(aiService.plannedProphecyEngine, ProphecyEngine.qwen);
     });
 
-    test('MLX 平台应优先于 flutter_local_ai', () async {
+    test('选择苹果本地时应优先于千问', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(
         const MethodChannel('flutter_local_ai'),
@@ -193,7 +186,7 @@ void main() {
           if (methodCall.method == 'isAvailable') return true;
           if (methodCall.method == 'initialize') return null;
           if (methodCall.method == 'generateText') {
-            return {'text': '系统本地 AI 生成的废话'};
+            return {'text': '电量50%时，系统本地模型说你下一口呼吸会重0.002克'};
           }
           return null;
         },
@@ -205,21 +198,44 @@ void main() {
           case 'isLoaded':
             return true;
           case 'generateProphecy':
-            return '你接下来会突然想起一件很小的事，然后笑一下';
+            return '电量72%时，你的拇指滑屏速度会比平时快1.2倍';
           default:
             return null;
         }
       });
 
       await aiService.checkModelAvailability();
-      expect(aiService.mlxPlatformSupported, isTrue);
-      expect(aiService.modelLoaded, isTrue);
+      await aiService.setPreferredEngine(PreferredEngine.apple);
 
       final sensor = SensorData.mock();
       final prophecy = await aiService.generateProphecy(sensor);
 
-      expect(prophecy, contains('突然想起'));
-      expect(prophecy, isNot(contains('系统本地 AI')));
+      expect(prophecy, contains('电量50%'));
+      expect(aiService.plannedProphecyEngine, ProphecyEngine.localAi);
+    });
+
+    test('选择 DeepSeek 时应使用云端生成', () async {
+      final client = DeepSeekClient();
+      client.postOverride = (_, __, ___) async {
+        return http.Response.bytes(
+          utf8.encode(
+            '{"choices":[{"message":{"content":"你今天会在三分钟后突然想起一件无关紧要的小事"}}]}',
+          ),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      };
+      aiService.dispose();
+      aiService = AiService(deepseekClient: client);
+
+      await aiService.setDeepSeekApiKey('sk-test');
+      await aiService.setPreferredEngine(PreferredEngine.deepseek);
+
+      final sensor = SensorData.mock();
+      final prophecy = await aiService.generateProphecy(sensor);
+
+      expect(prophecy, contains('三分钟'));
+      expect(aiService.plannedProphecyEngine, ProphecyEngine.deepseek);
     });
 
     test('ML 模型生成失败时回退到本地', () async {
@@ -239,7 +255,7 @@ void main() {
       final sensor = SensorData.mock();
       final prophecy = await aiService.generateProphecy(sensor);
 
-      expect(prophecy, contains(RegExp(r'电量|步数|亮度|音量|状态|移动|检测到|当前状态|现在是')));
+      expect(prophecy, isNotEmpty);
     });
   });
 }

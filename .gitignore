@@ -25,3 +25,7 @@ android/local.properties
 # Misc
 *.log
 *.bak
+
+# 内置千问 MLX 模型（约 285MB，构建前由 scripts/fetch_bundled_model.sh 拉取）
+ios/Runner/Models/Qwen2.5-0.5B-4bit/
+ios/Runner/Models/Qwen2.5-0.5B-Instruct-4bit/

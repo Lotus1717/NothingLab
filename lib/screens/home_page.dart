@@ -24,6 +24,16 @@ class _HomePageState extends State<HomePage> {
   int _loadingStep = 0;
   Timer? _loadingTimer;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        unawaited(context.read<AiService>().syncModelState());
+      }
+    });
+  }
+
   void _onDicePressed() async {
     final ai = context.read<AiService>();
     if (_dicePressed || ai.loading) return;
@@ -106,7 +116,19 @@ class _HomePageState extends State<HomePage> {
                     ProphecyCard(
                       prophecy: aiSvc.currentProphecy,
                       sensor: s,
-                      onRefresh: _onDicePressed,
+                      isLiked: aiSvc.isCurrentFavorited,
+                      onLike: () async {
+                        final liked =
+                            await aiSvc.likeCurrentProphecy(s);
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              liked ? '已加入收藏' : '这条已经在收藏里了',
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ],
                   const SizedBox(height: 24),
@@ -132,6 +154,7 @@ class _HomeHero extends StatelessWidget {
   IconData _engineIcon(ProphecyEngine engine) => switch (engine) {
         ProphecyEngine.qwen => Icons.memory_rounded,
         ProphecyEngine.localAi => Icons.auto_awesome_rounded,
+        ProphecyEngine.deepseek => Icons.cloud_outlined,
         ProphecyEngine.template => Icons.library_books_outlined,
       };
 

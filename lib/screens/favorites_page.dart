@@ -9,8 +9,8 @@ import '../widgets/oracle_background.dart';
 import '../widgets/section_header.dart';
 import '../widgets/status_chip.dart';
 
-class HistoryPage extends StatelessWidget {
-  const HistoryPage({super.key});
+class FavoritesPage extends StatelessWidget {
+  const FavoritesPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -23,17 +23,18 @@ class HistoryPage extends StatelessWidget {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                  child: Text('小本本', style: AppTheme.pageTitle(context)),
+                  child: Text('收藏', style: AppTheme.pageTitle(context)),
                 ),
                 Expanded(
-                  child: ai.history.isEmpty
+                  child: ai.favorites.isEmpty
                       ? Center(
                           child: Text(
-                            '暂无记录',
+                            '暂无收藏\n喜欢某条废话后，会出现在这里',
+                            textAlign: TextAlign.center,
                             style: AppTheme.caption(context),
                           ),
                         )
-                      : _HistoryList(history: ai.history, ai: ai),
+                      : _FavoritesList(favorites: ai.favorites, ai: ai),
                 ),
               ],
             ),
@@ -44,15 +45,15 @@ class HistoryPage extends StatelessWidget {
   }
 }
 
-class _HistoryList extends StatelessWidget {
-  final List<ProphecyRecord> history;
+class _FavoritesList extends StatelessWidget {
+  final List<ProphecyRecord> favorites;
   final AiService ai;
 
-  const _HistoryList({required this.history, required this.ai});
+  const _FavoritesList({required this.favorites, required this.ai});
 
   @override
   Widget build(BuildContext context) {
-    final groups = _groupByDate(history);
+    final groups = _groupByDate(favorites);
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       itemCount: groups.length,
@@ -65,10 +66,10 @@ class _HistoryList extends StatelessWidget {
             ...group.entries.map((entry) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: _HistoryItem(
+                child: _FavoriteItem(
                   item: entry.record,
                   timeLabel: _formatTime(entry.record.time),
-                  onDelete: () => ai.deleteHistory(entry.index),
+                  onDelete: () => ai.deleteFavorite(entry.index),
                 ),
               );
             }),
@@ -79,32 +80,32 @@ class _HistoryList extends StatelessWidget {
   }
 }
 
-class _HistoryEntry {
+class _FavoriteEntry {
   final int index;
   final ProphecyRecord record;
 
-  const _HistoryEntry({required this.index, required this.record});
+  const _FavoriteEntry({required this.index, required this.record});
 }
 
 class _DateGroup {
   final String label;
-  final List<_HistoryEntry> entries;
+  final List<_FavoriteEntry> entries;
 
   const _DateGroup({required this.label, required this.entries});
 }
 
-List<_DateGroup> _groupByDate(List<ProphecyRecord> history) {
-  if (history.isEmpty) return [];
+List<_DateGroup> _groupByDate(List<ProphecyRecord> favorites) {
+  if (favorites.isEmpty) return [];
 
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
   final yesterday = today.subtract(const Duration(days: 1));
 
-  final groups = <String, List<_HistoryEntry>>{};
+  final groups = <String, List<_FavoriteEntry>>{};
   final order = <String>[];
 
-  for (var i = 0; i < history.length; i++) {
-    final item = history[i];
+  for (var i = 0; i < favorites.length; i++) {
+    final item = favorites[i];
     final d = DateTime.fromMillisecondsSinceEpoch(item.time);
     final day = DateTime(d.year, d.month, d.day);
     final String label;
@@ -119,7 +120,7 @@ List<_DateGroup> _groupByDate(List<ProphecyRecord> history) {
       groups[label] = [];
       order.add(label);
     }
-    groups[label]!.add(_HistoryEntry(index: i, record: item));
+    groups[label]!.add(_FavoriteEntry(index: i, record: item));
   }
 
   return order
@@ -135,12 +136,12 @@ String _formatTime(int ts) {
   return '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 }
 
-class _HistoryItem extends StatelessWidget {
+class _FavoriteItem extends StatelessWidget {
   final ProphecyRecord item;
   final String timeLabel;
   final VoidCallback onDelete;
 
-  const _HistoryItem({
+  const _FavoriteItem({
     required this.item,
     required this.timeLabel,
     required this.onDelete,
@@ -149,7 +150,7 @@ class _HistoryItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dismissible(
-      key: ValueKey(item.time),
+      key: ValueKey('${item.time}_${item.text}'),
       direction: DismissDirection.endToStart,
       onDismissed: (_) => onDelete(),
       background: Container(
@@ -169,15 +170,9 @@ class _HistoryItem extends StatelessWidget {
           children: [
             Row(
               children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppTheme.oracleGold,
-                  ),
-                ),
-                const SizedBox(width: 8),
+                const Icon(Icons.favorite_rounded,
+                    size: 14, color: AppTheme.primaryDark),
+                const SizedBox(width: 6),
                 Text(timeLabel, style: AppTheme.caption(context)),
                 const Spacer(),
                 const Text('✨', style: TextStyle(fontSize: 14)),

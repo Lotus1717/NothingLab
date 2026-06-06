@@ -14,7 +14,7 @@ class OracleBottomNav extends StatelessWidget {
 
   static const _items = [
     _NavItem(Icons.auto_awesome_rounded, '首页'),
-    _NavItem(Icons.menu_book_rounded, '历史'),
+    _NavItem(Icons.favorite_rounded, '收藏'),
     _NavItem(Icons.tune_rounded, '设置'),
   ];
 

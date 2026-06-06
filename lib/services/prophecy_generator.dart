@@ -49,11 +49,15 @@ class ProphecyGeneratorBridge {
     await _channel.invokeMethod('loadModel');
   }
 
-  /// 生成预言（prompt 由 [ProphecyPromptBuilder.buildChatMLPrompt] 构建）
-  Future<String> generateProphecy({required String prompt}) async {
+  /// 生成预言（prompt 由 [ProphecyPromptBuilder.buildMlxChat] 构建）
+  Future<String> generateProphecy({
+    required String systemPrompt,
+    required String userPrompt,
+  }) async {
     try {
       final result = await _channel.invokeMethod<String>('generateProphecy', {
-        'prompt': prompt,
+        'system': systemPrompt,
+        'user': userPrompt,
       });
       return result ?? '';
     } on PlatformException catch (e) {

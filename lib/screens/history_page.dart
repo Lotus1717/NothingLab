@@ -188,21 +188,27 @@ class _HistoryItem extends StatelessWidget {
               spacing: 6,
               runSpacing: 6,
               children: [
-                if (item.battery != null)
-                  StatusChip(
-                    label: '${item.battery}%',
-                    icon: Icons.battery_full_rounded,
-                    active: true,
-                  ),
+                StatusChip(
+                  label: item.battery != null ? '${item.battery}%' : '--',
+                  icon: Icons.battery_full_rounded,
+                  active: item.battery != null,
+                ),
                 StatusChip(
                   label: '${item.steps}',
                   icon: Icons.directions_walk_rounded,
                   active: true,
                 ),
                 StatusChip(
-                  label: item.isMoving ? '移动' : '静止',
-                  icon: Icons.sensors_rounded,
-                  active: item.isMoving,
+                  label: item.volume != null ? '${item.volume}%' : '--',
+                  icon: Icons.volume_up_rounded,
+                  active: item.volume != null,
+                ),
+                StatusChip(
+                  label: item.ambientLight != null
+                      ? '${item.ambientLight}lx'
+                      : '--',
+                  icon: Icons.wb_sunny_outlined,
+                  active: item.ambientLight != null,
                 ),
               ],
             ),

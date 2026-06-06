@@ -101,6 +101,8 @@ void main() {
         brightness: 60,
         steps: 5000,
         isMoving: false,
+        volume: 45,
+        ambientLight: 320,
         time: DateTime(2026, 6, 5, 14, 30).millisecondsSinceEpoch,
       );
 
@@ -110,6 +112,8 @@ void main() {
       expect(restored.brightness, record.brightness);
       expect(restored.steps, record.steps);
       expect(restored.isMoving, record.isMoving);
+      expect(restored.volume, record.volume);
+      expect(restored.ambientLight, record.ambientLight);
       expect(restored.time, record.time);
     });
   });

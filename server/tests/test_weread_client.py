@@ -71,3 +71,43 @@ def test_parse_cookie_with_wr_rt() -> None:
     )
     assert cookies["wr_rt"] == "token"
     assert cookies["wr_fp"] == "x"
+
+
+def test_extract_books_from_notebook_shape() -> None:
+    from app.services.weread_client import _extract_books
+
+    payload = {
+        "books": [
+            {
+                "bookId": "12345",
+                "title": "测试书",
+                "author": "作者甲",
+                "cover": "https://example.com/cover.jpg",
+            }
+        ]
+    }
+    books = _extract_books(payload)
+    assert len(books) == 1
+    assert books[0]["book_id"] == "12345"
+    assert books[0]["title"] == "测试书"
+
+
+def test_extract_books_from_html_initial_state() -> None:
+    from app.services.weread_client import _extract_books_from_html
+
+    html = """
+    <script>
+    window.__INITIAL_STATE__ = {"books":[{"bookId":"999","title":"HTML书","author":"乙"}]};
+    </script>
+    """
+    books = _extract_books_from_html(html)
+    assert len(books) == 1
+    assert books[0]["book_id"] == "999"
+    assert books[0]["title"] == "HTML书"
+
+
+def test_raise_if_json_error_auth_code() -> None:
+    from app.services.weread_client import WeReadError, _raise_if_json_error
+
+    with pytest.raises(WeReadError, match="过期"):
+        _raise_if_json_error({"errcode": -2012, "errmsg": "登录超时"})

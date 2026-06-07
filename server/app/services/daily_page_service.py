@@ -12,7 +12,9 @@ from app.config import Settings
 from app.services.weread_client import fetch_best_bookmark
 
 PAGE_MAX_TOKENS = 1400
-PAGE_TEMPERATURE = 0.85
+PAGE_TEMPERATURE_DISCOVERY = 0.85
+PAGE_TEMPERATURE_SPECIFIC = 0.55
+MAX_SPECIFIC_ATTEMPTS = 2
 
 _SOURCE_NOTE_EXAMPLE = "第三章、序章、第二部 · 第一节"
 _SOURCE_NOTE_RULE = (
@@ -28,6 +30,22 @@ _SOURCE_NOTE_GARBLED = re.compile(
     r"|^p\d+$",
     re.IGNORECASE,
 )
+_SOURCE_NOTE_META = re.compile(r"提炼|核心思想|关键章节|涉及")
+
+
+def _normalize_book_title(title: str) -> str:
+    cleaned = title.strip().strip("《》").strip()
+    return re.sub(r"\s+", "", cleaned)
+
+
+def _titles_match(expected: str, actual: str) -> bool:
+    if not actual.strip():
+        return False
+    exp = _normalize_book_title(expected)
+    act = _normalize_book_title(actual)
+    if exp == act:
+        return True
+    return exp in act or act in exp
 
 
 def _sanitize_source_note(note: str) -> str:
@@ -40,10 +58,12 @@ def _sanitize_source_note(note: str) -> str:
         r"[\w\-\.]+", cleaned
     ):
         return "节选"
+    if _SOURCE_NOTE_META.search(cleaned) and len(cleaned) > 12:
+        return "节选"
     return cleaned
 
 
-_SYSTEM_PROMPT_SPECIFIC = f"""你是一个博学的荐书人。用户指定了一本书，请从该书中推荐一段真实、有启发的摘录。
+_SYSTEM_PROMPT_SPECIFIC = f"""你是一个博学的荐书人。用户指定了一本书，请从该书中摘录一段真实原文。
 
 输出严格按以下 JSON 格式，不要包含其他内容：
 {{
@@ -53,11 +73,12 @@ _SYSTEM_PROMPT_SPECIFIC = f"""你是一个博学的荐书人。用户指定了�
   "source_note": "出处章节（中文可读名，如「{_SOURCE_NOTE_EXAMPLE}」）"
 }}
 
-约束：
-- 必须来自用户指定的书，不要换成别的书
-- 摘录有启发性、耐读
-- 书名作者与指定书目一致
-- 写成完整小段落，有观点或可共鸣情境，勿写成单句金句
+硬性约束（违反即视为失败）：
+- 摘录必须出自用户指定的那一本书，严禁换成别的书
+- content 必须是该书原文或高度忠实的连续段落，禁止写成读后感、主题概括或跨书拼贴
+- JSON 中的 book_title 必须与用户给出的书名完全一致（一字不差）
+- author 必须与指定作者一致；若用户未给作者，填该书真实作者
+- 写成完整小段落，有观点或可共鸣情境，勿写成单句金句堆砌
 {_SOURCE_NOTE_RULE}"""
 
 _SYSTEM_PROMPT_DISCOVERY = f"""你是一个博学的荐书人。请从真实存在的经典好书中推荐一段有启发的文字。
@@ -166,20 +187,64 @@ class DailyPageService:
 
         if book_title:
             system = _SYSTEM_PROMPT_SPECIFIC
+            temperature = PAGE_TEMPERATURE_SPECIFIC
+            author_hint = f"（作者：{book_author}）" if book_author else ""
             user_prompt = (
-                f"今天日期 {date.today().isoformat()}。"
-                f"请从《{book_title}》"
-                f"{f'（{book_author}）' if book_author else ''}"
-                f"中推荐一段精彩摘录。"
+                f"今天日期 {date.today().isoformat()}。\n"
+                f"指定书目：《{book_title}》{author_hint}\n"
+                f"请只从《{book_title}》中摘录一段精彩原文。"
+                f"响应 JSON 中 book_title 必须严格等于「{book_title}」，"
+                "不要换成任何其他书。"
             )
+            attempts = MAX_SPECIFIC_ATTEMPTS
         else:
             system = _SYSTEM_PROMPT_DISCOVERY
+            temperature = PAGE_TEMPERATURE_DISCOVERY
             user_prompt = (
                 f"今天日期 {date.today().isoformat()}，"
                 f"随机种子 {nonce}。"
                 "请选一本之前没推荐过的书，推荐一段精彩摘录。"
             )
+            attempts = 1
 
+        parsed: DailyPageResult | None = None
+        for attempt in range(attempts):
+            prompt = user_prompt
+            if book_title and attempt > 0:
+                wrong = parsed.book_title if parsed else ""
+                prompt = (
+                    f"指定书目：《{book_title}》{author_hint}\n"
+                    f"你上次返回的 book_title 是「{wrong}」，与指定书目不符。\n"
+                    f"请重新只从《{book_title}》摘录原文；"
+                    f"JSON 中 book_title 必须严格等于「{book_title}」。"
+                )
+
+            raw = await self._call_deepseek(
+                api_key=api_key,
+                system=system,
+                user_prompt=prompt,
+                temperature=temperature,
+            )
+            parsed = self._parse(raw)
+            if not book_title or _titles_match(book_title, parsed.book_title):
+                break
+
+        assert parsed is not None
+        if book_title:
+            parsed.book_title = book_title
+        if book_author:
+            parsed.author = book_author
+        parsed.source = "deepseek"
+        return parsed
+
+    async def _call_deepseek(
+        self,
+        *,
+        api_key: str,
+        system: str,
+        user_prompt: str,
+        temperature: float,
+    ) -> str:
         url = f"{self._settings.deepseek_api_base}/chat/completions"
         payload = {
             "model": self._settings.deepseek_model,
@@ -187,7 +252,7 @@ class DailyPageService:
                 {"role": "system", "content": system},
                 {"role": "user", "content": user_prompt},
             ],
-            "temperature": PAGE_TEMPERATURE,
+            "temperature": temperature,
             "max_tokens": PAGE_MAX_TOKENS,
             "stream": False,
         }
@@ -209,14 +274,7 @@ class DailyPageService:
         if not choices:
             raise DailyPageError("DeepSeek 返回空 choices")
 
-        raw = choices[0].get("message", {}).get("content", "")
-        parsed = self._parse(raw)
-        if book_title:
-            parsed.book_title = book_title
-        if book_author:
-            parsed.author = book_author
-        parsed.source = "deepseek"
-        return parsed
+        return choices[0].get("message", {}).get("content", "")
 
     def _parse(self, raw: str) -> DailyPageResult:
         cleaned = raw.strip()

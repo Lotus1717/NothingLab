@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from http.cookies import SimpleCookie
 from typing import Any
@@ -15,13 +16,20 @@ _USER_AGENT = (
 _HEADERS = {
     "User-Agent": _USER_AGENT,
     "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "zh-CN,zh;q=0.9",
     "Referer": "https://weread.qq.com/web/shelf",
     "Origin": "https://weread.qq.com",
 }
 
 # i.weread.qq.com 已普遍返回 -2012；Web 端接口仍可用
 _WEB_SHELF_SYNC = "https://weread.qq.com/web/shelf/sync"
+_WEB_SHELF_BOOK_IDS = "https://weread.qq.com/web/shelf/bookIds"
+_WEB_SHELF_PAGE = "https://weread.qq.com/web/shelf"
+_API_USER_NOTEBOOK = "https://weread.qq.com/api/user/notebook"
+_API_BOOK_INFO = "https://weread.qq.com/api/book/info"
 _WEB_BEST_BOOKMARKS = "https://weread.qq.com/web/book/bestbookmarks"
+
+_AUTH_ERR_CODES = {-2012, -2041, -2010, 401, 403}
 
 
 class WeReadError(Exception):
@@ -34,9 +42,7 @@ def _normalize_cookie_raw(cookie: str) -> str:
     raw = cookie.strip()
     if raw.lower().startswith("cookie:"):
         raw = raw[7:].strip()
-    # 换行 / Tab 分隔（DevTools 多行复制）
     raw = re.sub(r"[\r\n\t]+", "; ", raw)
-    # 合并多余分号
     raw = re.sub(r";\s*;", "; ", raw)
     return raw.strip(" ;")
 
@@ -57,7 +63,6 @@ def parse_cookie_string(cookie: str) -> dict[str, str]:
         if key:
             cookies[key] = value
 
-    # SimpleCookie 兜底（处理带引号/特殊字符的值）
     if not cookies and "=" in raw:
         cookie_obj = SimpleCookie()
         cookie_obj.load(raw)
@@ -78,8 +83,7 @@ def parse_cookie_string(cookie: str) -> dict[str, str]:
 
 
 def _cookie_header(cookies: dict[str, str]) -> str:
-    """构建 Web API 所需的 Cookie 头，保留全部已解析字段。"""
-    preferred = ("wr_vid", "wr_skey", "wr_rt")
+    preferred = ("wr_vid", "wr_skey", "wr_rt", "wr_fp", "wr_gid")
     keys = [k for k in preferred if k in cookies]
     keys.extend(sorted(k for k in cookies if k not in preferred))
     return "; ".join(f"{k}={cookies[k]}" for k in keys)
@@ -89,12 +93,37 @@ def _weread_error_message(resp: httpx.Response) -> str:
     try:
         data = resp.json()
         if isinstance(data, dict):
-            errmsg = str(data.get("errmsg") or data.get("message") or "").strip()
+            errmsg = str(
+                data.get("errmsg") or data.get("errMsg") or data.get("message") or ""
+            ).strip()
             if errmsg:
                 return f"{errmsg}（HTTP {resp.status_code}）"
     except Exception:
         pass
     return f"HTTP {resp.status_code}"
+
+
+def _raise_if_json_error(data: Any) -> None:
+    if not isinstance(data, dict):
+        return
+    for key in ("errcode", "errCode"):
+        if key not in data:
+            continue
+        try:
+            code = int(data[key])
+        except (TypeError, ValueError):
+            continue
+        if code == 0:
+            return
+        msg = str(data.get("errmsg") or data.get("errMsg") or "").strip()
+        if code in _AUTH_ERR_CODES or "登录" in msg or "过期" in msg:
+            raise WeReadError(
+                "Cookie 已过期或无效。请在电脑浏览器重新登录 weread.qq.com，"
+                "打开书架任意一本书后，从开发者工具复制完整 Cookie（含 wr_rt）"
+            )
+        if msg:
+            raise WeReadError(f"微信读书返回：{msg}（{code}）")
+        raise WeReadError(f"微信读书返回错误码 {code}")
 
 
 def _extract_books(payload: dict[str, Any]) -> list[dict[str, str]]:
@@ -103,7 +132,16 @@ def _extract_books(payload: dict[str, Any]) -> list[dict[str, str]]:
 
     def add_book(raw: dict[str, Any]) -> None:
         info = raw.get("bookInfo") if isinstance(raw.get("bookInfo"), dict) else raw
-        book_id = str(info.get("bookId") or raw.get("bookId") or "").strip()
+        if isinstance(raw.get("book"), dict):
+            nested = raw["book"]
+            info = {**nested, **info} if isinstance(info, dict) else nested
+
+        book_id = str(
+            info.get("bookId")
+            or raw.get("bookId")
+            or raw.get("book_id")
+            or ""
+        ).strip()
         if not book_id or not book_id.isdigit() or book_id in seen:
             return
         title = str(info.get("title") or raw.get("title") or "").strip()
@@ -119,7 +157,7 @@ def _extract_books(payload: dict[str, Any]) -> list[dict[str, str]]:
             }
         )
 
-    for key in ("books", "bookItems", "recentBooks", "finishReadBooks"):
+    for key in ("books", "bookItems", "recentBooks", "finishReadBooks", "updated"):
         items = payload.get(key)
         if isinstance(items, list):
             for item in items:
@@ -135,24 +173,178 @@ def _extract_books(payload: dict[str, Any]) -> list[dict[str, str]]:
     return books
 
 
+def _extract_books_from_html(html: str) -> list[dict[str, str]]:
+    books: list[dict[str, str]] = []
+    seen: set[str] = set()
+
+    patterns = [
+        r"window\.__INITIAL_STATE__\s*=\s*(\{.*?\})\s*;",
+        r"window\.INITIAL_STATE\s*=\s*(\{.*?\})\s*;",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, html, re.DOTALL)
+        if not match:
+            continue
+        try:
+            payload = json.loads(match.group(1))
+        except json.JSONDecodeError:
+            continue
+        extracted = _extract_books(payload)
+        for book in extracted:
+            if book["book_id"] not in seen:
+                seen.add(book["book_id"])
+                books.append(book)
+
+    if books:
+        return books
+
+    for book_id, title in re.findall(
+        r'"bookId"\s*:\s*"?(\d+)"?.*?"title"\s*:\s*"([^"\\]+)"',
+        html,
+    ):
+        if book_id in seen:
+            continue
+        seen.add(book_id)
+        books.append(
+            {
+                "book_id": book_id,
+                "title": title,
+                "author": "",
+                "cover": "",
+            }
+        )
+    return books
+
+
+async def _fetch_book_infos(
+    client: httpx.AsyncClient, headers: dict[str, str], book_ids: list[str]
+) -> list[dict[str, str]]:
+    books: list[dict[str, str]] = []
+    for book_id in book_ids[:80]:
+        resp = await client.get(
+            _API_BOOK_INFO,
+            headers={**headers, "Referer": "https://weread.qq.com/web/shelf"},
+            params={"bookId": book_id},
+        )
+        if resp.status_code != 200:
+            continue
+        try:
+            data = resp.json()
+        except Exception:
+            continue
+        _raise_if_json_error(data)
+        extracted = _extract_books(data)
+        if extracted:
+            books.append(extracted[0])
+    return books
+
+
+async def _try_web_shelf_sync(
+    client: httpx.AsyncClient, headers: dict[str, str]
+) -> list[dict[str, str]]:
+    resp = await client.get(_WEB_SHELF_SYNC, headers=headers)
+    if resp.status_code in (401, 403):
+        raise WeReadError(
+            f"同步失败：{_weread_error_message(resp)}。"
+            "Cookie 可能已过期，请重新登录 weread.qq.com"
+        )
+    if resp.status_code != 200:
+        raise WeReadError(f"书架同步接口异常：{_weread_error_message(resp)}")
+
+    data = resp.json()
+    _raise_if_json_error(data)
+    books = _extract_books(data)
+    if books:
+        return books
+    return []
+
+
+async def _try_api_notebook(
+    client: httpx.AsyncClient, headers: dict[str, str]
+) -> list[dict[str, str]]:
+    resp = await client.get(
+        _API_USER_NOTEBOOK,
+        headers={**headers, "Referer": "https://weread.qq.com/web/shelf"},
+    )
+    if resp.status_code in (401, 403):
+        raise WeReadError(
+            f"笔记本接口认证失败：{_weread_error_message(resp)}。"
+            "请重新登录 weread.qq.com 后复制完整 Cookie"
+        )
+    if resp.status_code != 200:
+        return []
+
+    data = resp.json()
+    _raise_if_json_error(data)
+    return _extract_books(data)
+
+
+async def _try_web_shelf_book_ids(
+    client: httpx.AsyncClient, headers: dict[str, str]
+) -> list[dict[str, str]]:
+    resp = await client.get(_WEB_SHELF_BOOK_IDS, headers=headers)
+    if resp.status_code != 200:
+        return []
+
+    try:
+        data = resp.json()
+    except Exception:
+        return []
+
+    _raise_if_json_error(data)
+    book_ids: list[str] = []
+    if isinstance(data, dict):
+        raw_ids = data.get("bookIds") or data.get("books") or []
+        if isinstance(raw_ids, list):
+            for item in raw_ids:
+                if isinstance(item, str) and item.isdigit():
+                    book_ids.append(item)
+                elif isinstance(item, dict):
+                    bid = str(item.get("bookId") or "").strip()
+                    if bid.isdigit():
+                        book_ids.append(bid)
+    return await _fetch_book_infos(client, headers, book_ids)
+
+
+async def _try_web_shelf_html(
+    client: httpx.AsyncClient, headers: dict[str, str]
+) -> list[dict[str, str]]:
+    resp = await client.get(
+        _WEB_SHELF_PAGE,
+        headers={**headers, "Accept": "text/html,application/json,*/*"},
+    )
+    if resp.status_code != 200:
+        return []
+    return _extract_books_from_html(resp.text)
+
+
 async def sync_shelf(cookie: str) -> list[dict[str, str]]:
     cookies = parse_cookie_string(cookie)
     headers = {**_HEADERS, "Cookie": _cookie_header(cookies)}
 
-    async with httpx.AsyncClient(timeout=30.0, headers=headers) as client:
-        sync_resp = await client.get(_WEB_SHELF_SYNC)
-        if sync_resp.status_code == 200:
-            books = _extract_books(sync_resp.json())
-            if books:
-                return sorted(books, key=lambda b: b["title"])
-            raise WeReadError("书架为空，请确认微信读书账号里已有书籍")
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+        errors: list[str] = []
+        for fetcher in (
+            _try_web_shelf_sync,
+            _try_api_notebook,
+            _try_web_shelf_book_ids,
+            _try_web_shelf_html,
+        ):
+            try:
+                books = await fetcher(client, headers)
+                if books:
+                    return sorted(books, key=lambda b: b["title"])
+            except WeReadError as exc:
+                errors.append(exc.message)
+                if "过期" in exc.message or "无效" in exc.message:
+                    raise
 
-        detail = _weread_error_message(sync_resp)
-        if sync_resp.status_code in (401, 403):
-            raise WeReadError(
-                f"同步失败：{detail}。Cookie 可能已过期，请重新登录 weread.qq.com 后复制 wr_vid 与 wr_skey"
-            )
-        raise WeReadError(f"同步失败：{detail}，请检查 Cookie 是否完整")
+        if errors:
+            raise WeReadError(errors[-1])
+        raise WeReadError(
+            "书架为空或无法解析。请确认微信读书账号里已有书，"
+            "并在 weread.qq.com 登录后打开书架任意一本书，再重新复制 Cookie"
+        )
 
 
 _MIN_MARK_LEN = 200

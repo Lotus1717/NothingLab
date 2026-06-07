@@ -20,9 +20,9 @@ class ProphecyShareCard extends StatelessWidget {
     this.createdAt,
   });
 
-  /// 逻辑尺寸 360×450，导出时 pixelRatio 3 → 1080×1350
+  /// 逻辑尺寸 360×540，导出时 pixelRatio 3 → 1080×1620
   static const double cardWidth = 360;
-  static const double cardHeight = 450;
+  static const double cardHeight = 540;
 
   @override
   Widget build(BuildContext context) {
@@ -62,42 +62,48 @@ class ProphecyShareCard extends StatelessWidget {
         child: Stack(
           children: [
             Positioned(
-              top: -40,
-              right: -30,
+              top: -50,
+              right: -40,
               child: Container(
-                width: 140,
-                height: 140,
+                width: 130,
+                height: 130,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppTheme.secondary.withValues(alpha: 0.08),
+                  color: AppTheme.secondary.withValues(alpha: 0.06),
                 ),
               ),
             ),
             Positioned(
-              bottom: 80,
-              left: -50,
+              bottom: 40,
+              left: -60,
               child: Container(
-                width: 120,
-                height: 120,
+                width: 110,
+                height: 110,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppTheme.primary.withValues(alpha: 0.1),
+                  color: AppTheme.primary.withValues(alpha: 0.08),
                 ),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 18),
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _ShareHeader(createdAt: createdAt),
-                  const SizedBox(height: 14),
-                  Expanded(child: _ProphecyHero(prophecy: prophecy)),
+                  _BrandingHeader(createdAt: createdAt),
+                  const SizedBox(height: 18),
+                  const Center(
+                    child: ShareLazyCat(width: 96, height: 56),
+                  ),
+                  const SizedBox(height: 22),
+                  Expanded(
+                    child: _ProphecyHero(prophecy: prophecy),
+                  ),
                   if (sensor != null) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     _SensorSnapshot(sensor: sensor!),
                   ],
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 16),
                   const _ShareFooter(),
                 ],
               ),
@@ -109,17 +115,16 @@ class ProphecyShareCard extends StatelessWidget {
   }
 }
 
-class _ShareHeader extends StatelessWidget {
+/// 品牌区：标题 + 副标题 + 可选时间戳（不含小猫）
+class _BrandingHeader extends StatelessWidget {
   final DateTime? createdAt;
 
-  const _ShareHeader({this.createdAt});
+  const _BrandingHeader({this.createdAt});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const ShareLazyCat(width: 110, height: 64),
-        const SizedBox(height: 4),
         Text(
           '废话预言家',
           style: AppFonts.displayStyle(
@@ -128,7 +133,7 @@ class _ShareHeader extends StatelessWidget {
             height: 1.2,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         Text(
           ShareConfig.appTagline,
           style: AppFonts.bodyStyle(
@@ -139,7 +144,7 @@ class _ShareHeader extends StatelessWidget {
           ),
         ),
         if (createdAt != null) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
@@ -177,19 +182,22 @@ class _ProphecyHero extends StatelessWidget {
 
   const _ProphecyHero({required this.prophecy});
 
-  double _baseFontSize(String text) {
+  /// 预言正文字号：22–28，不随 [FittedBox] 缩小
+  static double fontSizeFor(String text) {
     final length = text.length;
-    if (length > 120) return 15;
-    if (length > 80) return 17;
-    if (length > 50) return 18;
-    return 19;
+    if (length > 100) return 22;
+    if (length > 70) return 24;
+    if (length > 40) return 26;
+    return 28;
   }
 
   @override
   Widget build(BuildContext context) {
+    final fontSize = fontSizeFor(prophecy);
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
@@ -205,56 +213,20 @@ class _ProphecyHero extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
-        children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              '「',
-              style: AppFonts.displayStyle(
-                fontSize: 28,
-                color: AppTheme.oracleGold.withValues(alpha: 0.45),
-                height: 1,
-              ),
-            ),
+      child: Align(
+        alignment: Alignment.center,
+        child: Text(
+          prophecy,
+          textAlign: TextAlign.center,
+          maxLines: 6,
+          overflow: TextOverflow.ellipsis,
+          style: AppFonts.bodyStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textDark,
+            height: 1.45,
           ),
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return Center(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.center,
-                    child: SizedBox(
-                      width: constraints.maxWidth,
-                      child: Text(
-                        prophecy,
-                        textAlign: TextAlign.center,
-                        style: AppFonts.bodyStyle(
-                          fontSize: _baseFontSize(prophecy),
-                          fontWeight: FontWeight.w500,
-                          color: AppTheme.textDark,
-                          height: 1.55,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              '」',
-              style: AppFonts.displayStyle(
-                fontSize: 28,
-                color: AppTheme.secondary.withValues(alpha: 0.4),
-                height: 1,
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -262,6 +234,8 @@ class _ProphecyHero extends StatelessWidget {
 
 class _ShareFooter extends StatelessWidget {
   const _ShareFooter();
+
+  static const double _qrSize = 56;
 
   @override
   Widget build(BuildContext context) {
@@ -277,7 +251,7 @@ class _ShareFooter extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(5),
+            padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(8),
@@ -288,7 +262,7 @@ class _ShareFooter extends StatelessWidget {
             child: QrImageView(
               data: ShareConfig.landingUrl,
               version: QrVersions.auto,
-              size: 64,
+              size: _qrSize,
               padding: EdgeInsets.zero,
               eyeStyle: const QrEyeStyle(
                 eyeShape: QrEyeShape.circle,
@@ -305,6 +279,7 @@ class _ShareFooter extends StatelessWidget {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   ShareConfig.qrLabel,

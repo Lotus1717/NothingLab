@@ -38,7 +38,15 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider.value(value: analyticsService),
         ChangeNotifierProvider.value(value: notificationService),
-        ChangeNotifierProvider(create: (_) => SensorService()..init()),
+        ChangeNotifierProvider(
+          create: (_) {
+            final service = SensorService();
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              service.init();
+            });
+            return service;
+          },
+        ),
         ChangeNotifierProvider(
           create: (_) => AiService(analyticsService: analyticsService),
         ),

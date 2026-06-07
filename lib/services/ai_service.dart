@@ -51,6 +51,8 @@ class AiService extends ChangeNotifier {
   String _currentProphecy = '';
   int _generationSeq = 0;
   int? _quotaRemaining;
+  bool _deepSeekReachable = false;
+  bool _disposed = false;
   List<ProphecyRecord> _favorites = [];
 
   final LocalAiBridge _localAi = LocalAiBridge();
@@ -98,34 +100,9 @@ class AiService extends ChangeNotifier {
         PreferredEngine.template => ProphecyEngine.template,
       };
 
-  /// 首页角标：反映下一次生成实际会走的途径（含配额用尽降级）
-  ProphecyEngine get displayEngine {
-    if (_preferredEngine == PreferredEngine.template) {
-      return ProphecyEngine.template;
-    }
-    if (_preferredEngine == PreferredEngine.apple) {
-      return appleLocalReady ? ProphecyEngine.localAi : ProphecyEngine.template;
-    }
-    if (_preferredEngine == PreferredEngine.qwen) {
-      return _shouldUseMlx() ? ProphecyEngine.qwen : ProphecyEngine.template;
-    }
-    if (_preferredEngine == PreferredEngine.deepseek) {
-      if (ProxyConfig.useProxy &&
-          _quotaRemaining != null &&
-          _quotaRemaining! <= 0) {
-        return ProphecyEngine.template;
-      }
-      if (_generationSeq > 0 &&
-          _lastProphecyEngine == ProphecyEngine.template) {
-        return ProphecyEngine.template;
-      }
-      if (ProxyConfig.useProxy || deepseekConfigured) {
-        return ProphecyEngine.deepseek;
-      }
-      return ProphecyEngine.template;
-    }
-    return plannedProphecyEngine;
-  }
+  /// 首页角标：DeepSeek 代理能调通则显示 DeepSeek，否则模板库
+  ProphecyEngine get displayEngine =>
+      _deepSeekReachable ? ProphecyEngine.deepseek : ProphecyEngine.template;
 
   String get currentProphecy => _currentProphecy;
   int get generationSeq => _generationSeq;
@@ -276,11 +253,22 @@ class AiService extends ChangeNotifier {
       final info = await _proxy.fetchQuota(deviceId: deviceId);
       if (info != null) {
         _quotaRemaining = info.remaining;
-        notifyListeners();
+        _deepSeekReachable = info.remaining > 0;
+      } else {
+        _deepSeekReachable = false;
       }
+      _notifyIfActive();
     } catch (e) {
       debugPrint('Refresh proxy quota failed: $e');
+      _deepSeekReachable = false;
+      _notifyIfActive();
     }
+  }
+
+  void _markDeepSeekReachable(bool reachable) {
+    if (_deepSeekReachable == reachable) return;
+    _deepSeekReachable = reachable;
+    _notifyIfActive();
   }
 
   Future<bool> _shouldUseCloudProphecy() async {
@@ -600,8 +588,10 @@ class AiService extends ChangeNotifier {
           if (prophecy.isEmpty) {
             prophecy = _getFallbackProphecy(fresh, salt: nonce);
             engine = ProphecyEngine.template;
+            _markDeepSeekReachable(false);
           } else {
             engine = ProphecyEngine.deepseek;
+            _markDeepSeekReachable(true);
           }
         } else {
           await _deepseekUsage.recordCall();
@@ -621,8 +611,10 @@ class AiService extends ChangeNotifier {
           if (prophecy.isEmpty) {
             prophecy = _getFallbackProphecy(fresh, salt: nonce);
             engine = ProphecyEngine.template;
+            _markDeepSeekReachable(false);
           } else {
             engine = ProphecyEngine.deepseek;
+            _markDeepSeekReachable(true);
           }
         }
       } on QuotaExceededException catch (e) {
@@ -630,21 +622,25 @@ class AiService extends ChangeNotifier {
         debugPrint('Proxy quota exceeded: ${e.message}');
         prophecy = _getFallbackProphecy(fresh, salt: nonce);
         engine = ProphecyEngine.template;
+        _markDeepSeekReachable(false);
       } on ProxyException catch (e) {
         _lastDeepSeekError = e.message;
         debugPrint('Proxy generation failed: ${e.message}');
         prophecy = _getFallbackProphecy(fresh, salt: nonce);
         engine = ProphecyEngine.template;
+        _markDeepSeekReachable(false);
       } on DeepSeekException catch (e) {
         _lastDeepSeekError = e.message;
         debugPrint('DeepSeek generation failed: ${e.message}');
         prophecy = _getFallbackProphecy(fresh, salt: nonce);
         engine = ProphecyEngine.template;
+        _markDeepSeekReachable(false);
       } catch (e) {
         _lastDeepSeekError = '云端生成失败，请稍后重试';
         debugPrint('Cloud generation failed: $e');
         prophecy = _getFallbackProphecy(fresh, salt: nonce);
         engine = ProphecyEngine.template;
+        _markDeepSeekReachable(false);
       }
     } else {
       await Future.delayed(const Duration(milliseconds: 800));
@@ -791,6 +787,16 @@ class AiService extends ChangeNotifier {
       await _saveFavorites();
       notifyListeners();
     }
+  }
+
+  void _notifyIfActive() {
+    if (!_disposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 
   String getLoadingText(int s) => _animalLoading[s % _animalLoading.length];

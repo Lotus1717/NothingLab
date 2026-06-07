@@ -2,21 +2,25 @@ import Flutter
 import UIKit
 
 class SceneDelegate: FlutterSceneDelegate {
+
   override func scene(
     _ scene: UIScene,
     willConnectTo session: UISceneSession,
     options connectionOptions: UIScene.ConnectionOptions
   ) {
-    guard let windowScene = scene as? UIWindowScene else {
+    guard let windowScene = scene as? UIWindowScene,
+          let appDelegate = UIApplication.shared.delegate as? AppDelegate else {
       super.scene(scene, willConnectTo: session, options: connectionOptions)
       return
     }
 
-    // 程序化创建 FlutterViewController，确保 sharedSetup（含 createShell）
-    // 在 viewDidLoad 之前完成。Storyboard 加载时可能先触发 viewDidLoad，
-    // 在 120Hz 设备上会因 platformTaskRunner 为空而在 VSyncClient 处崩溃。
+    // 引擎已在 AppDelegate.didFinishLaunching 中启动；此处只绑定窗口与 VC。
+    let flutterEngine = appDelegate.flutterEngine
+    appDelegate.startFlutterEngineIfNeeded()
+    registerSceneLifeCycle(with: flutterEngine)
+
     window = UIWindow(windowScene: windowScene)
-    let controller = FlutterViewController(project: nil, nibName: nil, bundle: nil)
+    let controller = FlutterViewController(engine: flutterEngine, nibName: nil, bundle: nil)
     window?.rootViewController = controller
     window?.makeKeyAndVisible()
 

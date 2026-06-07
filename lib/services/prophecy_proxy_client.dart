@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show SocketException;
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -90,11 +92,11 @@ class ProphecyProxyClient {
               headers: headers,
               body: body,
             )
-          : await _http
-              .post(uri, headers: headers, body: body)
-              .timeout(
-                const Duration(seconds: ProxyConfig.timeoutSeconds),
-              );
+          : await _requestWithRetry(
+              'POST',
+              uri,
+              () => _http.post(uri, headers: headers, body: body),
+            );
 
       if (response.statusCode == 429) {
         throw QuotaExceededException(_detailMessage(response));
@@ -130,7 +132,7 @@ class ProphecyProxyClient {
     } on ProxyException {
       rethrow;
     } catch (e) {
-      debugPrint('ProphecyProxyClient generate failed: $e');
+      debugPrint('ProphecyProxyClient POST $uri failed: $e');
       throw ProxyException('网络异常，请检查连接后重试');
     }
   }
@@ -142,11 +144,11 @@ class ProphecyProxyClient {
     try {
       final response = requestOverride != null
           ? await requestOverride!('GET', uri)
-          : await _http
-              .get(uri)
-              .timeout(
-                const Duration(seconds: ProxyConfig.timeoutSeconds),
-              );
+          : await _requestWithRetry(
+              'GET',
+              uri,
+              () => _http.get(uri),
+            );
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         return null;
@@ -160,9 +162,50 @@ class ProphecyProxyClient {
         dailyLimit: decoded['daily_limit'] as int? ?? 50,
       );
     } catch (e) {
-      debugPrint('ProphecyProxyClient fetchQuota failed: $e');
+      debugPrint('ProphecyProxyClient GET $uri failed: $e');
       return null;
     }
+  }
+
+  static const _maxAttempts = 2;
+  static const _retryDelay = Duration(milliseconds: 1500);
+
+  Future<http.Response> _requestWithRetry(
+    String method,
+    Uri uri,
+    Future<http.Response> Function() request,
+  ) async {
+    Object? lastError;
+    for (var attempt = 1; attempt <= _maxAttempts; attempt++) {
+      try {
+        return await request().timeout(
+          const Duration(seconds: ProxyConfig.timeoutSeconds),
+        );
+      } catch (e) {
+        lastError = e;
+        final retryable = _isRetryableNetworkError(e);
+        debugPrint(
+          'ProphecyProxyClient $method $uri '
+          'attempt $attempt/$_maxAttempts failed: $e',
+        );
+        if (!retryable || attempt >= _maxAttempts) {
+          rethrow;
+        }
+        await Future<void>.delayed(_retryDelay);
+      }
+    }
+    throw lastError ?? StateError('ProphecyProxyClient: unreachable');
+  }
+
+  static bool _isRetryableNetworkError(Object error) {
+    if (error is SocketException || error is TimeoutException) {
+      return true;
+    }
+    final msg = error.toString().toLowerCase();
+    return msg.contains('no route to host') ||
+        msg.contains('network is unreachable') ||
+        msg.contains('connection failed') ||
+        msg.contains('connection reset');
   }
 
   static Map<String, dynamic> _sensorToJson(SensorData sensor) {

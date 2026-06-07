@@ -13,11 +13,13 @@ Future<void> main() async {
   final analyticsService = AnalyticsService();
   final notificationService = NotificationService();
   await analyticsService.init();
-  await notificationService.init();
   runApp(MyApp(
     analyticsService: analyticsService,
     notificationService: notificationService,
   ));
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    notificationService.init();
+  });
 }
 
 class MyApp extends StatelessWidget {

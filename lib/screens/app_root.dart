@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -27,7 +29,11 @@ class _AppRootState extends State<AppRoot> with SingleTickerProviderStateMixin {
       duration: const Duration(milliseconds: 360),
     );
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
-    context.read<AiService>().checkModelAvailability();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        unawaited(context.read<AiService>().checkModelAvailability());
+      }
+    });
     if (_splashVisible) {
       _dismissSplash();
     }

@@ -118,7 +118,7 @@ class _ShareHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const ShareLazyCat(width: 140, height: 82),
+        const ShareLazyCat(width: 110, height: 64),
         const SizedBox(height: 4),
         Text(
           '废话预言家',
@@ -177,11 +177,19 @@ class _ProphecyHero extends StatelessWidget {
 
   const _ProphecyHero({required this.prophecy});
 
+  double _baseFontSize(String text) {
+    final length = text.length;
+    if (length > 120) return 15;
+    if (length > 80) return 17;
+    if (length > 50) return 18;
+    return 19;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 20, 18, 20),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
@@ -197,72 +205,56 @@ class _ProphecyHero extends StatelessWidget {
           ),
         ],
       ),
-      child: Stack(
+      child: Column(
         children: [
-          Positioned(
-            top: 0,
-            left: 2,
+          Align(
+            alignment: Alignment.centerLeft,
             child: Text(
               '「',
               style: AppFonts.displayStyle(
-                fontSize: 36,
+                fontSize: 28,
                 color: AppTheme.oracleGold.withValues(alpha: 0.45),
                 height: 1,
               ),
             ),
           ),
-          Positioned(
-            bottom: -4,
-            right: 2,
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return Center(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.center,
+                    child: SizedBox(
+                      width: constraints.maxWidth,
+                      child: Text(
+                        prophecy,
+                        textAlign: TextAlign.center,
+                        style: AppFonts.bodyStyle(
+                          fontSize: _baseFontSize(prophecy),
+                          fontWeight: FontWeight.w500,
+                          color: AppTheme.textDark,
+                          height: 1.55,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          Align(
+            alignment: Alignment.centerRight,
             child: Text(
               '」',
               style: AppFonts.displayStyle(
-                fontSize: 36,
+                fontSize: 28,
                 color: AppTheme.secondary.withValues(alpha: 0.4),
                 height: 1,
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
-            child: Align(
-              alignment: Alignment.center,
-              child: _AdaptiveProphecyText(text: prophecy),
-            ),
-          ),
         ],
-      ),
-    );
-  }
-}
-
-class _AdaptiveProphecyText extends StatelessWidget {
-  final String text;
-
-  const _AdaptiveProphecyText({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    final length = text.length;
-    final fontSize = length > 120
-        ? 15.0
-        : length > 80
-            ? 17.0
-            : length > 50
-                ? 18.0
-                : 19.0;
-    final maxLines = length > 100 ? 8 : 6;
-
-    return Text(
-      text,
-      textAlign: TextAlign.center,
-      maxLines: maxLines,
-      overflow: TextOverflow.ellipsis,
-      style: AppFonts.bodyStyle(
-        fontSize: fontSize,
-        fontWeight: FontWeight.w500,
-        color: AppTheme.textDark,
-        height: 1.6,
       ),
     );
   }
@@ -331,26 +323,6 @@ class _ShareFooter extends StatelessWidget {
                   ),
                 ),
               ],
-            ),
-          ),
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFFB7B2), Color(0xFFFF8A7A)],
-              ),
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.primaryDark.withValues(alpha: 0.2),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: const Center(
-              child: Text('🐱', style: TextStyle(fontSize: 16)),
             ),
           ),
         ],

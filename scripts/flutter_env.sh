@@ -1,6 +1,17 @@
 #!/usr/bin/env bash
-# Flutter 国内镜像环境变量 — source 此文件后使用 flutter 命令
+# Flutter 国内镜像环境变量
+# 优先使用用户级配置 ~/.config/flutter/env.sh（一劳永逸）
 # 用法: source scripts/flutter_env.sh [cfug|sjtu|tuna]
+
+if [ -f "$HOME/.config/flutter/env.sh" ]; then
+  # shellcheck source=/dev/null
+  source "$HOME/.config/flutter/env.sh"
+  echo "✓ 已加载 ~/.config/flutter/env.sh (FLUTTER_MIRROR=${FLUTTER_MIRROR:-cfug})"
+  echo "  PUB_HOSTED_URL=$PUB_HOSTED_URL"
+  echo "  FLUTTER_STORAGE_BASE_URL=$FLUTTER_STORAGE_BASE_URL"
+  echo "  Flutter: $(command -v flutter 2>/dev/null || echo '未找到')"
+  return 0 2>/dev/null || exit 0
+fi
 
 MIRROR="${1:-cfug}"
 

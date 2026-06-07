@@ -126,6 +126,18 @@ curl -s http://175.178.249.107/health | python3 -m json.tool
 
 ## 6. 功能冒烟测试
 
+**一键自动测试（在本机执行，无需 SSH）**：
+
+```bash
+# 完整测试（含 1 次真实生成，消耗配额）
+bash server/deploy/smoke_test.sh
+
+# 只测连通性与校验，不扣配额
+SMOKE_SKIP_PROPHECY=1 bash server/deploy/smoke_test.sh
+```
+
+手动 curl 示例：
+
 查询配额（不消耗次数）：
 
 ```bash

@@ -96,9 +96,25 @@ uvicorn app.main:app --reload --port 8000
 
 ## 测试
 
+单元测试（本地，不访问公网）：
+
 ```bash
 cd server
-python -m pytest tests/ -v
+python -m pytest tests/ -v --ignore=tests/test_remote_smoke.py
+```
+
+远程冒烟测试（一键验证公网代理，**成功时会消耗 1 次配额**）：
+
+```bash
+# 方式 A：Shell 脚本（推荐，仅需 curl）
+bash server/deploy/smoke_test.sh
+
+# 不测生成、不扣配额
+SMOKE_SKIP_PROPHECY=1 bash server/deploy/smoke_test.sh
+
+# 方式 B：pytest
+cd server
+SMOKE_BASE_URL=http://175.178.249.107 python -m pytest tests/test_remote_smoke.py -v
 ```
 
 ## 安全提示

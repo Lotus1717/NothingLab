@@ -4,12 +4,14 @@
 # 用法：
 #   bash server/deploy/smoke_test.sh
 #   SMOKE_BASE_URL=http://127.0.0.1:8000 bash server/deploy/smoke_test.sh
-#   SMOKE_SKIP_PROPHECY=1 bash server/deploy/smoke_test.sh   # 不消耗配额
+#   SMOKE_SKIP_PROPHECY=1 bash server/deploy/smoke_test.sh   # 不消耗预言配额
+#   SMOKE_SKIP_DAILY_PAGE=1 bash server/deploy/smoke_test.sh # 跳过书摘（需 DeepSeek）
 #
 # 环境变量：
 #   SMOKE_BASE_URL      默认 http://175.178.249.107
 #   SMOKE_DEVICE_ID     默认 auto-smoke-<时间戳>（每次新设备，避免耗尽配额）
-#   SMOKE_SKIP_PROPHECY 设为 1 时跳过 POST /v1/prophecy（不扣配额）
+#   SMOKE_SKIP_PROPHECY     设为 1 时跳过 POST /v1/prophecy（不扣配额）
+#   SMOKE_SKIP_DAILY_PAGE   设为 1 时跳过 POST /v1/daily-page
 #   SMOKE_TIMEOUT       curl 超时秒数，默认 30
 
 set -euo pipefail
@@ -115,7 +117,42 @@ split_response "$(
 )"
 assert_status "POST /v1/prophecy (非法 body)" "422" "${RESPONSE_CODE}" "${RESPONSE_BODY}"
 
-# --- 6. prophecy POST success → 200 ---
+# --- 6. daily-page POST bad body → 422 ---
+split_response "$(
+  run_request POST "/v1/daily-page" \
+    -H "Content-Type: application/json" \
+    -d '{"device_id":"short"}'
+)"
+assert_status "POST /v1/daily-page (device_id 过短)" "422" "${RESPONSE_CODE}" "${RESPONSE_BODY}"
+
+# --- 7. daily-page discovery (换书 nonce>0，不扣配额) ---
+if [[ "${SMOKE_SKIP_DAILY_PAGE:-}" == "1" ]]; then
+  skip "POST /v1/daily-page (SMOKE_SKIP_DAILY_PAGE=1)"
+else
+  split_response "$(
+    run_request POST "/v1/daily-page" \
+      -H "Content-Type: application/json" \
+      -d "{\"device_id\": \"${DEVICE_ID}\", \"nonce\": $(date +%s)}"
+  )"
+  if [[ "${RESPONSE_CODE}" == "200" ]]; then
+    pass "POST /v1/daily-page (随机探索) → HTTP 200"
+    title="$(echo "${RESPONSE_BODY}" | json_get book_title)"
+    content="$(echo "${RESPONSE_BODY}" | json_get content)"
+    if [[ -n "${title}" && -n "${content}" ]]; then
+      pass "书摘: 《${title}》 ${content:0:40}…"
+    else
+      fail "200 响应缺少 book_title 或 content" "${RESPONSE_BODY}"
+    fi
+  elif [[ "${RESPONSE_CODE}" == "404" ]]; then
+    fail "POST /v1/daily-page 未部署（404），请运行 server/deploy/deploy_update.sh" "${RESPONSE_BODY}"
+  elif [[ "${RESPONSE_CODE}" == "502" ]]; then
+    fail "DeepSeek 书摘失败（502）" "${RESPONSE_BODY}"
+  else
+    fail "POST /v1/daily-page → 期望 HTTP 200，实际 ${RESPONSE_CODE}" "${RESPONSE_BODY}"
+  fi
+fi
+
+# --- 8. prophecy POST success → 200 ---
 if [[ "${SMOKE_SKIP_PROPHECY:-}" == "1" ]]; then
   skip "POST /v1/prophecy (SMOKE_SKIP_PROPHECY=1)"
 else

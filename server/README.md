@@ -1,6 +1,15 @@
 # 废话预言家 · DeepSeek 代理服务（MVP）
 
-为 Flutter 客户端提供安全的 DeepSeek 预言生成，API Key 仅存服务端，配额由 **SQLite** 按 `device_id` 每日计数。
+为 Flutter 客户端提供安全的 DeepSeek 调用，API Key 仅存服务端，配额由 **SQLite** 按 `device_id` 每日计数。
+
+**本服务同时为两个 App 提供 API：**
+
+| App | 路由 |
+|-----|------|
+| 废话预言家 | `/v1/prophecy`、`/v1/quota`、`/v1/register` |
+| [拾页](../daily_page_app/) | `/v1/daily-page`、`/v1/weread/sync`、`/v1/reflection-prompt` |
+
+拾页 Flutter 客户端见 `daily_page_app/`，**勿在拾页项目内维护重复 server 代码**。
 
 ## 快速开始（本地）
 
@@ -21,6 +30,9 @@ curl http://localhost:8000/health
 | `POST` | `/v1/prophecy` | 生成预言（**成功时**消耗配额） |
 | `GET` | `/v1/quota?device_id=` | 查询当日配额 |
 | `POST` | `/v1/register` | 可选设备注册 |
+| `POST` | `/v1/daily-page` | 拾页：生成书摘（`nonce=0` 消耗配额，换书不扣） |
+| `POST` | `/v1/weread/sync` | 拾页：同步微信读书书架 |
+| `POST` | `/v1/reflection-prompt` | 拾页：AI 引导提问（不扣配额） |
 
 ### POST /v1/prophecy
 

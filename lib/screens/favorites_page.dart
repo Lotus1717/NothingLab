@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../config/theme.dart';
 import '../models/prophecy_record.dart';
+import '../models/sensor_data.dart';
 import '../services/ai_service.dart';
+import '../utils/prophecy_image_share.dart';
 import '../widgets/app_card.dart';
 import '../widgets/oracle_background.dart';
+import '../widgets/prophecy_share_card.dart';
 import '../widgets/section_header.dart';
 import '../widgets/status_chip.dart';
 
@@ -154,6 +156,9 @@ class _FavoriteItem extends StatefulWidget {
 }
 
 class _FavoriteItemState extends State<_FavoriteItem> {
+  final GlobalKey _shareImageKey = GlobalKey();
+  bool _sharing = false;
+
   void _copy(BuildContext context) {
     Clipboard.setData(ClipboardData(text: widget.item.text));
     if (mounted) {
@@ -163,8 +168,52 @@ class _FavoriteItemState extends State<_FavoriteItem> {
     }
   }
 
-  void _share(BuildContext context) {
-    Share.share(widget.item.text, subject: '废话预言家');
+  Future<void> _share(BuildContext context) async {
+    if (_sharing) return;
+    setState(() => _sharing = true);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('正在生成分享图…'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    }
+
+    final origin = defaultSharePositionOrigin(context);
+    try {
+      await shareRepaintBoundaryAsImage(
+        _shareImageKey,
+        sharePositionOrigin: origin,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('分享失败：$e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _sharing = false);
+    }
+  }
+
+  SensorData _sensorFromRecord(ProphecyRecord item) {
+    final at = DateTime.fromMillisecondsSinceEpoch(item.time);
+    return SensorData(
+      battery: item.battery,
+      brightness: item.brightness,
+      volume: item.volume ?? 50,
+      steps: item.steps,
+      isMoving: item.isMoving,
+      ambientLight: item.ambientLight ?? 0,
+      isRealBattery: item.battery != null,
+      isRealVolume: item.volume != null,
+      isRealSteps: true,
+      isRealAmbientLight: item.ambientLight != null,
+      timestamp: at,
+      timeHint: SensorData.timeHintFor(at),
+      dayPhase: SensorData.dayPhaseFor(at),
+    );
   }
 
   Future<bool> _confirmDelete(BuildContext context) async {
@@ -200,94 +249,112 @@ class _FavoriteItemState extends State<_FavoriteItem> {
 
   @override
   Widget build(BuildContext context) {
-    return Dismissible(
-      key: ValueKey('${widget.item.time}_${widget.item.text}'),
-      direction: DismissDirection.endToStart,
-      confirmDismiss: (_) => _confirmDelete(context),
-      onDismissed: (_) => widget.onDelete(),
-      background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        decoration: BoxDecoration(
-          color: AppTheme.danger.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+    final createdAt = DateTime.fromMillisecondsSinceEpoch(widget.item.time);
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Positioned(
+          left: -(ProphecyShareCard.cardWidth + 40),
+          top: 0,
+          child: RepaintBoundary(
+            key: _shareImageKey,
+            child: ProphecyShareCard(
+              prophecy: widget.item.text,
+              sensor: _sensorFromRecord(widget.item),
+              createdAt: createdAt,
+            ),
+          ),
         ),
-        child: const Icon(Icons.delete_outline_rounded,
-            color: AppTheme.danger, size: 28),
-      ),
-      child: AppCard(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+        Dismissible(
+          key: ValueKey('${widget.item.time}_${widget.item.text}'),
+          direction: DismissDirection.endToStart,
+          confirmDismiss: (_) => _confirmDelete(context),
+          onDismissed: (_) => widget.onDelete(),
+          background: Container(
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.only(right: 20),
+            decoration: BoxDecoration(
+              color: AppTheme.danger.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            ),
+            child: const Icon(Icons.delete_outline_rounded,
+                color: AppTheme.danger, size: 28),
+          ),
+          child: AppCard(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.favorite_rounded,
-                    size: 14, color: AppTheme.primaryDark),
-                const SizedBox(width: 6),
-                Text(widget.timeLabel, style: AppTheme.caption(context)),
-                const Spacer(),
-                const Text('✨', style: TextStyle(fontSize: 14)),
+                Row(
+                  children: [
+                    const Icon(Icons.favorite_rounded,
+                        size: 14, color: AppTheme.primaryDark),
+                    const SizedBox(width: 6),
+                    Text(widget.timeLabel, style: AppTheme.caption(context)),
+                    const Spacer(),
+                    const Text('✨', style: TextStyle(fontSize: 14)),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    StatusChip(
+                      label: widget.item.battery != null
+                          ? '${widget.item.battery}%'
+                          : '--',
+                      icon: Icons.battery_full_rounded,
+                      active: widget.item.battery != null,
+                    ),
+                    StatusChip(
+                      label: '${widget.item.steps}',
+                      icon: Icons.directions_walk_rounded,
+                      active: true,
+                    ),
+                    StatusChip(
+                      label: widget.item.volume != null
+                          ? '${widget.item.volume}%'
+                          : '--',
+                      icon: Icons.volume_up_rounded,
+                      active: widget.item.volume != null,
+                    ),
+                    StatusChip(
+                      label: widget.item.ambientLight != null
+                          ? '${widget.item.ambientLight}lx'
+                          : '--',
+                      icon: Icons.wb_sunny_outlined,
+                      active: widget.item.ambientLight != null,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  widget.item.text,
+                  style: AppTheme.bodyMedium(context).copyWith(height: 1.55),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    _MiniAction(
+                      icon: Icons.copy_rounded,
+                      label: '复制',
+                      onTap: () => _copy(context),
+                    ),
+                    const SizedBox(width: 8),
+                    _MiniAction(
+                      icon: Icons.image_rounded,
+                      label: _sharing ? '生成中' : '分享图',
+                      onTap: _sharing ? () {} : () => _share(context),
+                    ),
+                  ],
+                ),
               ],
             ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                StatusChip(
-                  label: widget.item.battery != null
-                      ? '${widget.item.battery}%'
-                      : '--',
-                  icon: Icons.battery_full_rounded,
-                  active: widget.item.battery != null,
-                ),
-                StatusChip(
-                  label: '${widget.item.steps}',
-                  icon: Icons.directions_walk_rounded,
-                  active: true,
-                ),
-                StatusChip(
-                  label: widget.item.volume != null
-                      ? '${widget.item.volume}%'
-                      : '--',
-                  icon: Icons.volume_up_rounded,
-                  active: widget.item.volume != null,
-                ),
-                StatusChip(
-                  label: widget.item.ambientLight != null
-                      ? '${widget.item.ambientLight}lx'
-                      : '--',
-                  icon: Icons.wb_sunny_outlined,
-                  active: widget.item.ambientLight != null,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              widget.item.text,
-              style: AppTheme.bodyMedium(context).copyWith(height: 1.55),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                _MiniAction(
-                  icon: Icons.copy_rounded,
-                  label: '复制',
-                  onTap: () => _copy(context),
-                ),
-                const SizedBox(width: 8),
-                _MiniAction(
-                  icon: Icons.share_rounded,
-                  label: '分享',
-                  onTap: () => _share(context),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }

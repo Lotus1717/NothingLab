@@ -3,20 +3,23 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
+import 'package:nonsense_prophet/config/deepseek_config.dart';
 import 'package:nonsense_prophet/config/preferred_engine.dart';
 import 'package:nonsense_prophet/models/sensor_data.dart';
 import 'package:nonsense_prophet/services/ai_service.dart';
-import 'package:nonsense_prophet/services/deepseek_client.dart';
+import 'package:nonsense_prophet/services/prophecy_proxy_client.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../helpers/test_helpers.dart';
 
 void main() {
   const channel = MethodChannel('com.nonsense_prophet/ml');
   late AiService aiService;
 
-  setUp(() {
+  setUp(() async {
     initTestBindings();
     mockAllPlatformChannels();
     aiService = AiService();
+    await aiService.setPreferredEngine(PreferredEngine.template);
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, null);
   });
@@ -214,28 +217,118 @@ void main() {
       expect(aiService.plannedProphecyEngine, ProphecyEngine.localAi);
     });
 
-    test('选择 DeepSeek 时应使用云端生成', () async {
-      final client = DeepSeekClient();
-      client.postOverride = (_, __, ___) async {
+    test('默认引擎应为 DeepSeek 且代理可用', () async {
+      SharedPreferences.setMockInitialValues({});
+      aiService.dispose();
+      aiService = AiService();
+      await aiService.checkModelAvailability();
+      expect(aiService.preferredEngine, PreferredEngine.deepseek);
+      expect(aiService.proxyAvailable, isTrue);
+    });
+
+    test('选择 DeepSeek 时应通过代理云端生成', () async {
+      final proxy = ProphecyProxyClient();
+      proxy.requestOverride = (method, uri, {headers, body}) async {
+        if (method == 'GET') {
+          return http.Response.bytes(
+            utf8.encode(
+              '{"device_id":"test","daily_limit":50,"used":0,"remaining":50,"date":"2026-01-01","timezone":"UTC"}',
+            ),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
+        expect(method, 'POST');
         return http.Response.bytes(
           utf8.encode(
-            '{"choices":[{"message":{"content":"你今天会在三分钟后突然想起一件无关紧要的小事"}}]}',
+            '{"prophecy":"你今天会在三分钟后突然想起一件无关紧要的小事",'
+            '"engine":"deepseek","quota_used":1,"quota_remaining":49,"daily_limit":50}',
           ),
           200,
           headers: {'content-type': 'application/json; charset=utf-8'},
         );
       };
       aiService.dispose();
-      aiService = AiService(deepseekClient: client);
-
-      await aiService.setDeepSeekApiKey('sk-test');
+      aiService = AiService(prophecyProxyClient: proxy);
       await aiService.setPreferredEngine(PreferredEngine.deepseek);
 
       final sensor = SensorData.mock();
       final prophecy = await aiService.generateProphecy(sensor);
 
       expect(prophecy, contains('三分钟'));
-      expect(aiService.plannedProphecyEngine, ProphecyEngine.deepseek);
+      expect(aiService.lastProphecyEngine, ProphecyEngine.deepseek);
+      expect(aiService.quotaRemaining, 49);
+      expect(aiService.displayEngine, ProphecyEngine.deepseek);
+    });
+
+    test('超过每日限额时静默回退模板库', () async {
+      final proxy = ProphecyProxyClient();
+      proxy.requestOverride = (method, uri, {headers, body}) async {
+        return http.Response.bytes(
+          utf8.encode('{"detail":"每日配额已用尽（50/50）"}'),
+          429,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      };
+      aiService.dispose();
+      aiService = AiService(prophecyProxyClient: proxy);
+      await aiService.setPreferredEngine(PreferredEngine.deepseek);
+
+      final sensor = SensorData.mock();
+      final prophecy = await aiService.generateProphecy(sensor);
+
+      expect(prophecy, isNotEmpty);
+      expect(aiService.lastProphecyEngine, ProphecyEngine.template);
+      expect(aiService.quotaRemaining, 0);
+      expect(aiService.displayEngine, ProphecyEngine.template);
+    });
+
+    test('代理返回 502 时静默回退模板库', () async {
+      final proxy = ProphecyProxyClient();
+      proxy.requestOverride = (method, uri, {headers, body}) async {
+        return http.Response.bytes(
+          utf8.encode('{"detail":"预言生成失败，请稍后重试"}'),
+          502,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      };
+      aiService.dispose();
+      aiService = AiService(prophecyProxyClient: proxy);
+      await aiService.setPreferredEngine(PreferredEngine.deepseek);
+
+      final sensor = SensorData.mock();
+      final prophecy = await aiService.generateProphecy(sensor);
+
+      expect(prophecy, isNotEmpty);
+      expect(aiService.lastProphecyEngine, ProphecyEngine.template);
+    });
+
+    test('配额用尽后 displayEngine 显示模板库', () async {
+      SharedPreferences.setMockInitialValues({});
+      final proxy = ProphecyProxyClient();
+      proxy.requestOverride = (method, uri, {headers, body}) async {
+        if (method == 'GET') {
+          return http.Response.bytes(
+            utf8.encode(
+              '{"device_id":"test-device-id","daily_limit":${DeepSeekConfig.dailyLimit},'
+              '"used":${DeepSeekConfig.dailyLimit},"remaining":0,"date":"2026-01-01","timezone":"UTC"}',
+            ),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
+        return http.Response.bytes(
+          utf8.encode('{"detail":"每日配额已用尽"}'),
+          429,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      };
+      aiService.dispose();
+      aiService = AiService(prophecyProxyClient: proxy);
+      await aiService.setPreferredEngine(PreferredEngine.deepseek);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(aiService.displayEngine, ProphecyEngine.template);
     });
 
     test('ML 模型生成失败时回退到本地', () async {

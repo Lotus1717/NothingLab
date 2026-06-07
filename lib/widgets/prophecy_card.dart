@@ -150,6 +150,7 @@ class _ProphecyCardState extends State<ProphecyCard>
               child: ProphecyShareCard(
                 prophecy: widget.prophecy,
                 sensor: widget.sensor,
+                createdAt: widget.sensor?.timestamp,
               ),
             ),
           ),

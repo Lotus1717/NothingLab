@@ -1,9 +1,9 @@
-/// DeepSeek API 常量
+/// DeepSeek 相关常量（密钥仅存服务端，客户端走代理）
 class DeepSeekConfig {
   DeepSeekConfig._();
 
-  static const apiBase = 'https://api.deepseek.com';
-  static const chatPath = '/chat/completions';
   static const model = 'deepseek-chat';
-  static const timeoutSeconds = 30;
+
+  /// 每设备每日云端调用上限（由代理服务器强制执行）
+  static const dailyLimit = 50;
 }

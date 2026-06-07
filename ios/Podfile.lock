@@ -1,33 +1,83 @@
 PODS:
+  - battery_plus (1.0.0):
+    - Flutter
   - Flutter (1.0.0)
+  - flutter_local_ai (0.0.1):
+    - Flutter
+    - FlutterMacOS
+  - flutter_local_notifications (0.0.1):
+    - Flutter
+  - light (4.1.1):
+    - Flutter
   - pedometer_2 (0.0.1):
+    - Flutter
+  - permission_handler_apple (9.4.8):
     - Flutter
   - screen_brightness_ios (0.1.0):
     - Flutter
   - sensors_plus (0.0.1):
     - Flutter
+  - share_plus (0.0.1):
+    - Flutter
+  - shared_preferences_foundation (0.0.1):
+    - Flutter
+    - FlutterMacOS
+  - volume_controller (0.0.1):
+    - Flutter
 
 DEPENDENCIES:
+  - battery_plus (from `.symlinks/plugins/battery_plus/ios`)
   - Flutter (from `Flutter`)
+  - flutter_local_ai (from `.symlinks/plugins/flutter_local_ai/darwin`)
+  - flutter_local_notifications (from `.symlinks/plugins/flutter_local_notifications/ios`)
+  - light (from `.symlinks/plugins/light/ios`)
   - pedometer_2 (from `.symlinks/plugins/pedometer_2/ios`)
+  - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
   - screen_brightness_ios (from `.symlinks/plugins/screen_brightness_ios/ios`)
   - sensors_plus (from `.symlinks/plugins/sensors_plus/ios`)
+  - share_plus (from `.symlinks/plugins/share_plus/ios`)
+  - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
+  - volume_controller (from `.symlinks/plugins/volume_controller/ios`)
 
 EXTERNAL SOURCES:
+  battery_plus:
+    :path: ".symlinks/plugins/battery_plus/ios"
   Flutter:
     :path: Flutter
+  flutter_local_ai:
+    :path: ".symlinks/plugins/flutter_local_ai/darwin"
+  flutter_local_notifications:
+    :path: ".symlinks/plugins/flutter_local_notifications/ios"
+  light:
+    :path: ".symlinks/plugins/light/ios"
   pedometer_2:
     :path: ".symlinks/plugins/pedometer_2/ios"
+  permission_handler_apple:
+    :path: ".symlinks/plugins/permission_handler_apple/ios"
   screen_brightness_ios:
     :path: ".symlinks/plugins/screen_brightness_ios/ios"
   sensors_plus:
     :path: ".symlinks/plugins/sensors_plus/ios"
+  share_plus:
+    :path: ".symlinks/plugins/share_plus/ios"
+  shared_preferences_foundation:
+    :path: ".symlinks/plugins/shared_preferences_foundation/darwin"
+  volume_controller:
+    :path: ".symlinks/plugins/volume_controller/ios"
 
 SPEC CHECKSUMS:
+  battery_plus: 34f72fa2afeeea83bbae306c72a25828d3ec727a
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  flutter_local_ai: f75692258153d225d3dbc173bdf093fad8f19d63
+  flutter_local_notifications: ff50f8405aaa0ccdc7dcfb9022ca192e8ad9688f
+  light: 5e1e8346ee23840a8d35cea662dec2204240a08f
   pedometer_2: b116b6b20b3d04612f28b9756b3a9feb60bba35b
+  permission_handler_apple: ee2fe0fd04551b304eb002714ff067c371c822ed
   screen_brightness_ios: 7437207a2a9bc56553aa10f782afecf830b4c4e2
   sensors_plus: 18a9b346c43e157da17d2c8e99def703f9efb9d8
+  share_plus: 8b6f8b3447e494cca5317c8c3073de39b3600d1f
+  shared_preferences_foundation: 5086985c1d43c5ba4d5e69a4e8083a389e2909e6
+  volume_controller: 2e3de73d6e7e81a0067310d17fb70f2f86d71ac7
 
 PODFILE CHECKSUM: 66866e13c4896fc6bdae5bc4d5326009eba95cf5
 

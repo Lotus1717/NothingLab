@@ -26,6 +26,15 @@ android/local.properties
 *.log
 *.bak
 
-# 内置千问 MLX 模型（约 285MB，构建前由 scripts/fetch_bundled_model.sh 拉取）
+# DeepSeek 代理服务端密钥
+server/.env
+server/.venv/
+
+# 千问 MLX 模型（约 285MB，opt-in: BUNDLE_MODEL=1 scripts/fetch_bundled_model.sh）
 ios/Runner/Models/Qwen2.5-0.5B-4bit/
 ios/Runner/Models/Qwen2.5-0.5B-Instruct-4bit/
+
+# Python (proxy server)
+__pycache__/
+*.py[cod]
+.pytest_cache/

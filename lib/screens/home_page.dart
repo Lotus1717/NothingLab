@@ -20,7 +20,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  bool _dicePressed = false;
+  bool _catPressed = false;
   int _loadingStep = 0;
   Timer? _loadingTimer;
 
@@ -34,10 +34,10 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void _onDicePressed() async {
+  void _onCatTapped() async {
     final ai = context.read<AiService>();
-    if (_dicePressed || ai.loading) return;
-    setState(() => _dicePressed = true);
+    if (_catPressed || ai.loading) return;
+    setState(() => _catPressed = true);
     final sensor = context.read<SensorService>().data;
     int step = 0;
     _loadingTimer = Timer.periodic(const Duration(milliseconds: 700), (_) {
@@ -49,7 +49,7 @@ class _HomePageState extends State<HomePage> {
     });
     await ai.generateProphecy(sensor);
     _loadingTimer?.cancel();
-    if (mounted) setState(() => _dicePressed = false);
+    if (mounted) setState(() => _catPressed = false);
   }
 
   @override
@@ -90,7 +90,7 @@ class _HomePageState extends State<HomePage> {
                       children: [
                         LazyCat(
                           animating: aiSvc.loading,
-                          onTap: _onDicePressed,
+                          onTap: _onCatTapped,
                         ),
                         const SizedBox(height: 10),
                         AnimatedSwitcher(

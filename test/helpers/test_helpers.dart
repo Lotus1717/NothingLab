@@ -1,6 +1,43 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nonsense_prophet/main.dart';
+import 'package:nonsense_prophet/services/ai_service.dart';
+import 'package:nonsense_prophet/services/analytics_service.dart';
+import 'package:nonsense_prophet/services/notification_service.dart';
+import 'package:nonsense_prophet/services/sensor_service.dart';
+import 'package:provider/provider.dart';
+import 'package:provider/single_child_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+/// 构造带埋点与通知服务的 [MyApp]，供 widget 测试使用
+Future<MyApp> buildTestApp() async {
+  final analyticsService = AnalyticsService();
+  final notificationService = NotificationService();
+  await analyticsService.init();
+  await notificationService.init();
+  return MyApp(
+    analyticsService: analyticsService,
+    notificationService: notificationService,
+  );
+}
+
+/// MainScreen 等 widget 测试所需的 Provider 列表
+Future<List<SingleChildWidget>> buildCoreTestProviders({
+  AiService? aiService,
+}) async {
+  final analytics = AnalyticsService();
+  final notifications = NotificationService();
+  await analytics.init();
+  await notifications.init();
+  return [
+    ChangeNotifierProvider(create: (_) => SensorService()..init()),
+    ChangeNotifierProvider(
+      create: (_) => aiService ?? AiService(analyticsService: analytics),
+    ),
+    ChangeNotifierProvider.value(value: analytics),
+    ChangeNotifierProvider.value(value: notifications),
+  ];
+}
 
 void initTestBindings() {
   TestWidgetsFlutterBinding.ensureInitialized();

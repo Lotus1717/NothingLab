@@ -1,6 +1,20 @@
 #!/usr/bin/env bash
-# 拉取内置千问 MLX 模型（iOS 构建前自动/手动执行）
+# 拉取千问 MLX 模型（可选，默认不打包进 App）
+#
+# 模型 bundling 已改为 opt-in，Release/Debug 构建不会自动下载或嵌入 ~200MB 模型。
+# 需要本地测试 MLX 千问时手动执行：
+#   BUNDLE_MODEL=1 bash scripts/fetch_bundled_model.sh
+# 并在 Xcode 中临时将 Models 目录加回 Copy Bundle Resources（见 README）。
+#
+# 环境变量：
+#   BUNDLE_MODEL=1       执行下载（默认跳过）
+#   SKIP_BUNDLE_MODEL=1  显式跳过（与默认行为相同）
 set -euo pipefail
+
+if [[ "${SKIP_BUNDLE_MODEL:-}" == "1" || "${BUNDLE_MODEL:-}" != "1" ]]; then
+  echo "Skipping bundled model fetch (opt-in: BUNDLE_MODEL=1 bash $0)"
+  exit 0
+fi
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MODEL_DIR="$ROOT/ios/Runner/Models/Qwen2.5-0.5B-Instruct-4bit"

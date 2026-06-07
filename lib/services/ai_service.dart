@@ -1,20 +1,24 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io' show Platform;
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config/deepseek_config.dart';
 import '../config/preferred_engine.dart';
+import '../config/proxy_config.dart';
 import '../config/prophecy_style.dart';
 import '../models/prophecy_record.dart';
 import '../models/sensor_data.dart';
 import '../utils/prophecy_normalizer.dart';
 import '../utils/prophecy_prompt_builder.dart';
+import 'analytics_service.dart';
 import 'deepseek_client.dart';
+import 'deepseek_usage_tracker.dart';
+import 'device_id_service.dart';
 import 'local_ai_bridge.dart';
 import 'prophecy_generator.dart';
+import 'prophecy_proxy_client.dart';
 
 /// 废话生成来源
 enum ProphecyEngine {
@@ -34,30 +38,44 @@ enum ProphecyEngine {
 class AiService extends ChangeNotifier {
   static const _favoritesKey = 'prophecy_favorites_v1';
   static const _preferredEngineKey = 'preferred_engine_v2';
-  static const _deepseekApiKeyKey = 'deepseek_api_key_v1';
-  static const _maxFavorites = 30;
 
   bool _loading = false;
   bool _modelLoaded = false;
   bool _isModelAvailable = false;
   bool _mlxPlatformSupported = false;
   bool _preferenceLoaded = false;
-  PreferredEngine _preferredEngine = PreferredEngine.apple;
-  String? _deepseekApiKey;
+  PreferredEngine _preferredEngine = PreferredEngine.deepseek;
   String? _lastDeepSeekError;
   String? _lastLoadError;
   ProphecyEngine _lastProphecyEngine = ProphecyEngine.template;
   String _currentProphecy = '';
   int _generationSeq = 0;
+  int? _quotaRemaining;
   List<ProphecyRecord> _favorites = [];
 
   final LocalAiBridge _localAi = LocalAiBridge();
   final ProphecyGeneratorBridge _bridge = ProphecyGeneratorBridge();
   final DeepSeekClient _deepseek;
+  final DeepSeekUsageTracker _deepseekUsage;
+  final ProphecyProxyClient _proxy;
+  final DeviceIdService _deviceId;
+  final AnalyticsService? _analytics;
 
-  AiService({DeepSeekClient? deepseekClient})
-      : _deepseek = deepseekClient ?? DeepSeekClient() {
+  AiService({
+    DeepSeekClient? deepseekClient,
+    DeepSeekUsageTracker? deepseekUsageTracker,
+    ProphecyProxyClient? prophecyProxyClient,
+    DeviceIdService? deviceIdService,
+    AnalyticsService? analyticsService,
+  })  : _deepseek = deepseekClient ?? DeepSeekClient(),
+        _deepseekUsage = deepseekUsageTracker ?? DeepSeekUsageTracker(),
+        _proxy = prophecyProxyClient ?? ProphecyProxyClient(),
+        _deviceId = deviceIdService ?? DeviceIdService(),
+        _analytics = analyticsService {
     _loadFavorites();
+    if (ProxyConfig.useProxy) {
+      unawaited(_refreshProxyQuota());
+    }
   }
 
   bool get loading => _loading;
@@ -69,8 +87,9 @@ class AiService extends ChangeNotifier {
       _localAi.initialized && _localAi.modelAvailable;
   String? get lastLoadError => _lastLoadError;
   String? get lastDeepSeekError => _lastDeepSeekError;
-  bool get deepseekConfigured =>
-      _deepseekApiKey != null && _deepseekApiKey!.trim().isNotEmpty;
+  bool get proxyAvailable => ProxyConfig.useProxy;
+  bool get deepseekConfigured => proxyAvailable;
+  int? get quotaRemaining => _quotaRemaining;
   ProphecyEngine get lastProphecyEngine => _lastProphecyEngine;
   ProphecyEngine get plannedProphecyEngine => switch (_preferredEngine) {
         PreferredEngine.apple => ProphecyEngine.localAi,
@@ -79,8 +98,34 @@ class AiService extends ChangeNotifier {
         PreferredEngine.template => ProphecyEngine.template,
       };
 
-  /// 首页角标：下一次戳小猫将使用的生成途径
-  ProphecyEngine get displayEngine => plannedProphecyEngine;
+  /// 首页角标：反映下一次生成实际会走的途径（含配额用尽降级）
+  ProphecyEngine get displayEngine {
+    if (_preferredEngine == PreferredEngine.template) {
+      return ProphecyEngine.template;
+    }
+    if (_preferredEngine == PreferredEngine.apple) {
+      return appleLocalReady ? ProphecyEngine.localAi : ProphecyEngine.template;
+    }
+    if (_preferredEngine == PreferredEngine.qwen) {
+      return _shouldUseMlx() ? ProphecyEngine.qwen : ProphecyEngine.template;
+    }
+    if (_preferredEngine == PreferredEngine.deepseek) {
+      if (ProxyConfig.useProxy &&
+          _quotaRemaining != null &&
+          _quotaRemaining! <= 0) {
+        return ProphecyEngine.template;
+      }
+      if (_generationSeq > 0 &&
+          _lastProphecyEngine == ProphecyEngine.template) {
+        return ProphecyEngine.template;
+      }
+      if (ProxyConfig.useProxy || deepseekConfigured) {
+        return ProphecyEngine.deepseek;
+      }
+      return ProphecyEngine.template;
+    }
+    return plannedProphecyEngine;
+  }
 
   String get currentProphecy => _currentProphecy;
   int get generationSeq => _generationSeq;
@@ -132,7 +177,6 @@ class AiService extends ChangeNotifier {
     _mlxPlatformSupported = await _bridge.isPlatformSupported();
     await _localAi.initialize();
     await _ensurePreferredEngineLoaded();
-    await _loadDeepSeekApiKey();
 
     if (_mlxPlatformSupported) {
       try {
@@ -150,35 +194,6 @@ class AiService extends ChangeNotifier {
     }
 
     notifyListeners();
-  }
-
-  Future<void> setDeepSeekApiKey(String key) async {
-    final trimmed = key.trim();
-    _deepseekApiKey = trimmed.isEmpty ? null : trimmed;
-    _lastDeepSeekError = null;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      if (_deepseekApiKey == null) {
-        await prefs.remove(_deepseekApiKeyKey);
-      } else {
-        await prefs.setString(_deepseekApiKeyKey, _deepseekApiKey!);
-      }
-    } catch (e) {
-      debugPrint('Save DeepSeek API key failed: $e');
-    }
-    notifyListeners();
-  }
-
-  Future<void> _loadDeepSeekApiKey() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final saved = prefs.getString(_deepseekApiKeyKey);
-      _deepseekApiKey =
-          saved != null && saved.trim().isNotEmpty ? saved.trim() : null;
-    } catch (e) {
-      debugPrint('Load DeepSeek API key failed: $e');
-      _deepseekApiKey = null;
-    }
   }
 
   Future<void> setPreferredEngine(PreferredEngine engine) async {
@@ -208,11 +223,7 @@ class AiService extends ChangeNotifier {
     _preferenceLoaded = true;
   }
 
-  PreferredEngine _defaultPreferredEngine() {
-    if (!kIsWeb && Platform.isIOS) return PreferredEngine.apple;
-    if (_mlxPlatformSupported) return PreferredEngine.qwen;
-    return PreferredEngine.template;
-  }
+  PreferredEngine _defaultPreferredEngine() => PreferredEngine.deepseek;
 
   Future<void> loadModel({void Function(double progress)? onProgress}) async {
     if (_modelLoaded) return;
@@ -259,8 +270,42 @@ class AiService extends ChangeNotifier {
   bool _shouldUseAppleLocal() =>
       _preferredEngine == PreferredEngine.apple && appleLocalReady;
 
-  bool _shouldUseDeepSeek() =>
-      _preferredEngine == PreferredEngine.deepseek && deepseekConfigured;
+  Future<void> _refreshProxyQuota() async {
+    try {
+      final deviceId = await _deviceId.getDeviceId();
+      final info = await _proxy.fetchQuota(deviceId: deviceId);
+      if (info != null) {
+        _quotaRemaining = info.remaining;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Refresh proxy quota failed: $e');
+    }
+  }
+
+  Future<bool> _shouldUseCloudProphecy() async {
+    if (_preferredEngine != PreferredEngine.deepseek) return false;
+
+    if (ProxyConfig.useProxy) {
+      if (!proxyAvailable) return false;
+      if (_quotaRemaining != null && _quotaRemaining! <= 0) {
+        debugPrint(
+          'Proxy daily limit reached (${DeepSeekConfig.dailyLimit}), using template',
+        );
+        return false;
+      }
+      return true;
+    }
+
+    if (!deepseekConfigured) return false;
+    final allowed = await _deepseekUsage.canUseDeepSeek();
+    if (!allowed) {
+      debugPrint(
+        'DeepSeek daily limit reached (${DeepSeekConfig.dailyLimit}), using template',
+      );
+    }
+    return allowed;
+  }
 
   Future<void> _pollLoadProgress(void Function(double progress)? onProgress) async {
     try {
@@ -540,28 +585,56 @@ class AiService extends ChangeNotifier {
         prophecy = _getFallbackProphecy(fresh, salt: nonce);
         engine = ProphecyEngine.template;
       }
-    } else if (_shouldUseDeepSeek()) {
+    } else if (await _shouldUseCloudProphecy()) {
       try {
         _lastDeepSeekError = null;
-        prophecy = await _generateWithQualityGate(
-          () => _deepseek.generate(
-            apiKey: _deepseekApiKey!,
+        if (ProxyConfig.useProxy) {
+          final deviceId = await _deviceId.getDeviceId();
+          final result = await _proxy.generateProphecy(
+            deviceId: deviceId,
             sensor: fresh,
             nonce: nonce,
-          ),
-          () => _deepseek.generate(
-            apiKey: _deepseekApiKey!,
-            sensor: fresh,
-            nonce: nonce + 1000,
-            temperature: ProphecyStyle.retryTemperature,
-          ),
-        );
-        if (prophecy.isEmpty) {
-          prophecy = _getFallbackProphecy(fresh, salt: nonce);
-          engine = ProphecyEngine.template;
+          );
+          _quotaRemaining = result.quotaRemaining;
+          prophecy = ProphecyNormalizer.normalizeProphecy(result.prophecy);
+          if (prophecy.isEmpty) {
+            prophecy = _getFallbackProphecy(fresh, salt: nonce);
+            engine = ProphecyEngine.template;
+          } else {
+            engine = ProphecyEngine.deepseek;
+          }
         } else {
-          engine = ProphecyEngine.deepseek;
+          await _deepseekUsage.recordCall();
+          prophecy = await _generateWithQualityGate(
+            () => _deepseek.generate(
+              apiKey: '',
+              sensor: fresh,
+              nonce: nonce,
+            ),
+            () => _deepseek.generate(
+              apiKey: '',
+              sensor: fresh,
+              nonce: nonce + 1000,
+              temperature: ProphecyStyle.retryTemperature,
+            ),
+          );
+          if (prophecy.isEmpty) {
+            prophecy = _getFallbackProphecy(fresh, salt: nonce);
+            engine = ProphecyEngine.template;
+          } else {
+            engine = ProphecyEngine.deepseek;
+          }
         }
+      } on QuotaExceededException catch (e) {
+        _quotaRemaining = 0;
+        debugPrint('Proxy quota exceeded: ${e.message}');
+        prophecy = _getFallbackProphecy(fresh, salt: nonce);
+        engine = ProphecyEngine.template;
+      } on ProxyException catch (e) {
+        _lastDeepSeekError = e.message;
+        debugPrint('Proxy generation failed: ${e.message}');
+        prophecy = _getFallbackProphecy(fresh, salt: nonce);
+        engine = ProphecyEngine.template;
       } on DeepSeekException catch (e) {
         _lastDeepSeekError = e.message;
         debugPrint('DeepSeek generation failed: ${e.message}');
@@ -569,7 +642,7 @@ class AiService extends ChangeNotifier {
         engine = ProphecyEngine.template;
       } catch (e) {
         _lastDeepSeekError = '云端生成失败，请稍后重试';
-        debugPrint('DeepSeek generation failed: $e');
+        debugPrint('Cloud generation failed: $e');
         prophecy = _getFallbackProphecy(fresh, salt: nonce);
         engine = ProphecyEngine.template;
       }
@@ -597,6 +670,7 @@ class AiService extends ChangeNotifier {
 
     _loading = false;
     notifyListeners();
+    unawaited(_analytics?.trackProphecyGenerated());
     return prophecy;
   }
 
@@ -699,11 +773,9 @@ class AiService extends ChangeNotifier {
                 : null,
       ),
     );
-    if (_favorites.length > _maxFavorites) {
-      _favorites.removeLast();
-    }
     await _saveFavorites();
     notifyListeners();
+    unawaited(_analytics?.trackFavoriteAdded());
     return true;
   }
 

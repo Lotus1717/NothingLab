@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:nonsense_prophet/main.dart';
 import 'helpers/test_helpers.dart';
 
 void main() {
@@ -13,14 +12,14 @@ void main() {
   });
 
   testWidgets('应用应该正常启动并显示标题', (WidgetTester tester) async {
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(await buildTestApp());
     await tester.pumpAndSettle(const Duration(seconds: 2));
 
     expect(find.text('废话预言家'), findsOneWidget);
   });
 
   testWidgets('底部导航栏有三个标签', (WidgetTester tester) async {
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(await buildTestApp());
     await tester.pumpAndSettle(const Duration(seconds: 2));
 
     expect(find.text('首页'), findsOneWidget);

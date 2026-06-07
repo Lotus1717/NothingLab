@@ -1,0 +1,16 @@
+# 生产环境：单容器 app，SQLite 配额持久化到 /data
+services:
+  app:
+    build: .
+    ports:
+      - "80:8000"
+    env_file:
+      - .env
+    environment:
+      SQLITE_PATH: /data/quota.db
+    volumes:
+      - quota_data:/data
+    restart: unless-stopped
+
+volumes:
+  quota_data:

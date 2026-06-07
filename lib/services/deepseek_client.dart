@@ -42,7 +42,10 @@ class DeepSeekClient {
     if (key.isEmpty) return null;
 
     final chat = ProphecyPromptBuilder.buildMlxChat(sensor, nonce: nonce);
-    final uri = Uri.parse('${DeepSeekConfig.apiBase}${DeepSeekConfig.chatPath}');
+    const apiBase = 'https://api.deepseek.com';
+    const chatPath = '/chat/completions';
+    const timeoutSeconds = 30;
+    final uri = Uri.parse('$apiBase$chatPath');
     final body = jsonEncode({
       'model': DeepSeekConfig.model,
       'messages': [
@@ -63,7 +66,7 @@ class DeepSeekClient {
           ? await postOverride!(uri, headers, body)
           : await _http
               .post(uri, headers: headers, body: body)
-              .timeout(const Duration(seconds: DeepSeekConfig.timeoutSeconds));
+              .timeout(const Duration(seconds: timeoutSeconds));
 
       if (response.statusCode == 401 || response.statusCode == 403) {
         throw DeepSeekException('API 密钥无效或已过期', statusCode: response.statusCode);

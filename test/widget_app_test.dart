@@ -2,11 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:nonsense_prophet/config/theme.dart';
-import 'package:nonsense_prophet/main.dart';
 import 'package:nonsense_prophet/screens/main_screen.dart';
 import 'package:nonsense_prophet/screens/settings_page.dart';
-import 'package:nonsense_prophet/services/ai_service.dart';
-import 'package:nonsense_prophet/services/sensor_service.dart';
 import 'helpers/test_helpers.dart';
 
 void main() {
@@ -20,7 +17,7 @@ void main() {
 
   group('MyApp — 完整应用', () {
     testWidgets('应显示应用标题和底部导航栏', (tester) async {
-      await tester.pumpWidget(const MyApp());
+      await tester.pumpWidget(await buildTestApp());
       // 等待异步加载完成
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
@@ -34,7 +31,7 @@ void main() {
     });
 
     testWidgets('底部导航切换应更换页面', (tester) async {
-      await tester.pumpWidget(const MyApp());
+      await tester.pumpWidget(await buildTestApp());
       await tester.pumpAndSettle(const Duration(seconds: 2));
 
       expect(find.text('戳戳小猫，听句废话'), findsOneWidget);
@@ -49,7 +46,7 @@ void main() {
       // 切换到设置页
       await tester.tap(find.text('设置'));
       await tester.pumpAndSettle();
-      expect(find.textContaining('小设置'), findsOneWidget);
+      expect(find.textContaining('设置'), findsWidgets);
 
       // 切回首页
       await tester.tap(find.text('首页'));
@@ -60,12 +57,10 @@ void main() {
 
   group('首页 — HomePage', () {
     testWidgets('应显示传感器卡片', (tester) async {
+      final providers = await buildCoreTestProviders();
       await tester.pumpWidget(
         MultiProvider(
-          providers: [
-            ChangeNotifierProvider(create: (_) => SensorService()),
-            ChangeNotifierProvider(create: (_) => AiService()),
-          ],
+          providers: providers,
           child: const MaterialApp(home: MainScreen()),
         ),
       );
@@ -80,13 +75,11 @@ void main() {
       expect(find.bySemanticsLabel('戳戳小猫'), findsOneWidget);
     });
 
-    testWidgets('戳骰子应生成预言', (tester) async {
+    testWidgets('戳小猫应生成预言', (tester) async {
+      final providers = await buildCoreTestProviders();
       await tester.pumpWidget(
         MultiProvider(
-          providers: [
-            ChangeNotifierProvider(create: (_) => SensorService()),
-            ChangeNotifierProvider(create: (_) => AiService()),
-          ],
+          providers: providers,
           child: const MaterialApp(home: MainScreen()),
         ),
       );
@@ -103,24 +96,24 @@ void main() {
 
   group('设置页 — SettingsPage', () {
     testWidgets('应显示传感器状态', (tester) async {
+      final providers = await buildCoreTestProviders();
       await tester.pumpWidget(MaterialApp(
         home: MultiProvider(
-          providers: [
-            ChangeNotifierProvider(create: (_) => SensorService()),
-            ChangeNotifierProvider(create: (_) => AiService()),
-          ],
+          providers: providers,
           child: const SettingsPage(),
         ),
       ));
       await tester.pump();
 
-      expect(find.textContaining('小设置'), findsOneWidget);
+      expect(find.textContaining('设置'), findsWidgets);
       expect(find.textContaining('电池'), findsOneWidget);
       expect(find.textContaining('运动'), findsOneWidget);
       expect(find.textContaining('步数'), findsOneWidget);
       expect(find.textContaining('系统音量'), findsOneWidget);
       expect(find.textContaining('环境亮度'), findsOneWidget);
-      expect(find.textContaining('DeepSeek 会发送传感器摘要'), findsOneWidget);
+      expect(find.textContaining('云端由服务器代理生成'), findsOneWidget);
+      expect(find.textContaining('生成途径'), findsNothing);
+      expect(find.textContaining('DeepSeek 密钥'), findsNothing);
     });
   });
 

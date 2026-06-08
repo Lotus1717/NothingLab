@@ -77,6 +77,7 @@ async def create_daily_page(
             book_author=body.book_author,
             weread_cookie=body.weread_cookie,
             nonce=body.nonce,
+            exclude_contents=body.exclude_contents,
         )
     except DailyPageError as exc:
         raise HTTPException(status_code=502, detail=exc.message) from exc

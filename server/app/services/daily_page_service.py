@@ -9,15 +9,20 @@ from datetime import date
 import httpx
 
 from app.config import Settings
+from app.services.passage_similarity import is_too_similar
 from app.services.weread_client import fetch_best_bookmark
 
 PAGE_MAX_TOKENS = 1400
 PAGE_TEMPERATURE_DISCOVERY = 1.1
 PAGE_TEMPERATURE_SPECIFIC = 0.55
-PAGE_TEMPERATURE_SPECIFIC_VARIED = 0.78
+PAGE_TEMPERATURE_SPECIFIC_VARIED = 0.95
 DISCOVERY_TOP_P = 0.92
 DISCOVERY_PRESENCE_PENALTY = 0.45
+VARIED_TOP_P = 0.92
+VARIED_PRESENCE_PENALTY = 0.65
 MAX_SPECIFIC_ATTEMPTS = 2
+MAX_VARIED_ATTEMPTS = 3
+_MAX_EXCLUDE_SNIPPET = 320
 
 _SOURCE_NOTE_EXAMPLE = "第三章、序章、第二部 · 第一节"
 _SOURCE_NOTE_RULE = (
@@ -49,6 +54,27 @@ def _titles_match(expected: str, actual: str) -> bool:
     if exp == act:
         return True
     return exp in act or act in exp
+
+
+def _build_exclude_prompt(exclude_contents: list[str]) -> str:
+    snippets: list[str] = []
+    for raw in exclude_contents:
+        cleaned = re.sub(r"\s+", " ", raw.strip())
+        if not cleaned:
+            continue
+        if len(cleaned) > _MAX_EXCLUDE_SNIPPET:
+            cleaned = cleaned[:_MAX_EXCLUDE_SNIPPET] + "…"
+        snippets.append(cleaned)
+        if len(snippets) >= 5:
+            break
+    if not snippets:
+        return ""
+    lines = "\n".join(f"- 「{s}」" for s in snippets)
+    return (
+        "\n\n以下段落用户已经看过，严禁重复、改写或高度相似（换几个词也不行）：\n"
+        f"{lines}\n"
+        "请从完全不同的章节/情节/论述选段，开头和核心句子必须与以上完全不同。"
+    )
 
 
 def _sanitize_source_note(note: str) -> str:
@@ -138,7 +164,11 @@ class DailyPageService:
         book_author: str | None = None,
         weread_cookie: str | None = None,
         nonce: int = 0,
+        exclude_contents: list[str] | None = None,
     ) -> DailyPageResult:
+        excludes = [
+            c.strip() for c in (exclude_contents or []) if c and c.strip()
+        ][:5]
         today_key = date.today().isoformat()
         cache_key = f"{today_key}:{book_id or book_title or 'discovery'}:{nonce}"
         if nonce == 0:
@@ -152,9 +182,12 @@ class DailyPageService:
             try:
                 seed = nonce if nonce else date.today().toordinal()
                 mark = await fetch_best_bookmark(
-                    weread_cookie, book_id, seed=seed
+                    weread_cookie,
+                    book_id,
+                    seed=seed,
+                    exclude=excludes,
                 )
-                if mark:
+                if mark and not is_too_similar(mark["content"], excludes):
                     page = DailyPageResult(
                         book_title=book_title or "",
                         author=book_author or "",
@@ -170,6 +203,7 @@ class DailyPageService:
                 book_title=book_title,
                 book_author=book_author,
                 nonce=nonce,
+                exclude_contents=excludes,
             )
 
         if nonce == 0:
@@ -182,6 +216,7 @@ class DailyPageService:
         book_title: str | None,
         book_author: str | None,
         nonce: int,
+        exclude_contents: list[str],
     ) -> DailyPageResult:
         api_key = self._settings.deepseek_api_key
         if not api_key:
@@ -189,10 +224,9 @@ class DailyPageService:
 
         if book_title:
             system = _SYSTEM_PROMPT_SPECIFIC
+            varied = nonce > 0 or bool(exclude_contents)
             temperature = (
-                PAGE_TEMPERATURE_SPECIFIC_VARIED
-                if nonce > 0
-                else PAGE_TEMPERATURE_SPECIFIC
+                PAGE_TEMPERATURE_SPECIFIC_VARIED if varied else PAGE_TEMPERATURE_SPECIFIC
             )
             author_hint = f"（作者：{book_author}）" if book_author else ""
             user_prompt = (
@@ -202,11 +236,14 @@ class DailyPageService:
                 f"响应 JSON 中 book_title 必须严格等于「{book_title}」，"
                 "不要换成任何其他书。"
             )
-            if nonce > 0:
-                user_prompt += f"\n随机种子 {nonce}，请选择与以往不同的段落。"
-            attempts = MAX_SPECIFIC_ATTEMPTS
-            top_p = None
-            presence_penalty = None
+            if varied:
+                user_prompt += (
+                    f"\n随机种子 {nonce}，必须选择与已有段落完全不同的新段落。"
+                )
+                user_prompt += _build_exclude_prompt(exclude_contents)
+            attempts = MAX_VARIED_ATTEMPTS if varied else MAX_SPECIFIC_ATTEMPTS
+            top_p = VARIED_TOP_P if varied else None
+            presence_penalty = VARIED_PRESENCE_PENALTY if varied else None
         else:
             system = _SYSTEM_PROMPT_DISCOVERY
             temperature = PAGE_TEMPERATURE_DISCOVERY
@@ -220,16 +257,25 @@ class DailyPageService:
             attempts = 1
 
         parsed: DailyPageResult | None = None
+        last_content = ""
         for attempt in range(attempts):
             prompt = user_prompt
             if book_title and attempt > 0:
-                wrong = parsed.book_title if parsed else ""
-                prompt = (
-                    f"指定书目：《{book_title}》{author_hint}\n"
-                    f"你上次返回的 book_title 是「{wrong}」，与指定书目不符。\n"
-                    f"请重新只从《{book_title}》摘录原文；"
-                    f"JSON 中 book_title 必须严格等于「{book_title}」。"
-                )
+                if parsed and parsed.content:
+                    snippet = parsed.content[:_MAX_EXCLUDE_SNIPPET]
+                    prompt = (
+                        f"{user_prompt}\n\n"
+                        f"你上次返回的段落与已展示内容过于相似：「{snippet}…」。"
+                        "请换完全不同的章节/角度/情节，开头句也不得相同。"
+                    )
+                else:
+                    wrong = parsed.book_title if parsed else ""
+                    prompt = (
+                        f"指定书目：《{book_title}》{author_hint}\n"
+                        f"你上次返回的 book_title 是「{wrong}」，与指定书目不符。\n"
+                        f"请重新只从《{book_title}》摘录原文；"
+                        f"JSON 中 book_title 必须严格等于「{book_title}」。"
+                    )
 
             raw = await self._call_deepseek(
                 api_key=api_key,
@@ -240,8 +286,15 @@ class DailyPageService:
                 presence_penalty=presence_penalty,
             )
             parsed = self._parse(raw)
-            if not book_title or _titles_match(book_title, parsed.book_title):
+            if book_title and not _titles_match(book_title, parsed.book_title):
+                continue
+            last_content = parsed.content
+            if not exclude_contents or not is_too_similar(
+                parsed.content, exclude_contents
+            ):
                 break
+            if attempt == attempts - 1:
+                parsed.content = last_content
 
         assert parsed is not None
         if book_title:

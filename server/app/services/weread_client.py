@@ -9,6 +9,8 @@ from typing import Any
 
 import httpx
 
+from app.services.passage_similarity import is_too_similar
+
 _USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -355,33 +357,45 @@ def _normalize_mark_text(text: str) -> str:
     return re.sub(r"\s+", " ", str(text)).strip()
 
 
-def _pick_mark_content(marks: list[str], seed: int) -> str:
+def _pick_mark_content(
+    marks: list[str], seed: int, *, exclude: list[str] | None = None
+) -> str:
     """优先 200-800 字划线；过短则拼接相邻划线或选更长的。"""
     if not marks:
         return ""
 
-    preferred = [m for m in marks if _MIN_MARK_LEN <= len(m) <= _MAX_MARK_LEN]
+    candidates = marks
+    if exclude:
+        filtered = [m for m in marks if not is_too_similar(m, exclude)]
+        if filtered:
+            candidates = filtered
+
+    preferred = [
+        m for m in candidates if _MIN_MARK_LEN <= len(m) <= _MAX_MARK_LEN
+    ]
     if preferred:
         return preferred[seed % len(preferred)]
 
     combined: list[str] = []
-    for i in range(len(marks)):
-        chunk = marks[i]
-        for j in range(i + 1, len(marks)):
-            chunk = f"{chunk}\n\n{marks[j]}"
+    for i in range(len(candidates)):
+        chunk = candidates[i]
+        for j in range(i + 1, len(candidates)):
+            chunk = f"{chunk}\n\n{candidates[j]}"
             if len(chunk) > _MAX_MARK_LEN:
                 break
             if len(chunk) >= _MIN_MARK_LEN:
+                if exclude and is_too_similar(chunk, exclude):
+                    continue
                 combined.append(chunk)
 
     if combined:
         return combined[seed % len(combined)]
 
-    return max(marks, key=len)
+    return max(candidates, key=len)
 
 
 async def fetch_best_bookmark(
-    cookie: str, book_id: str, *, seed: int = 0
+    cookie: str, book_id: str, *, seed: int = 0, exclude: list[str] | None = None
 ) -> dict[str, str] | None:
     cookies = parse_cookie_string(cookie)
     headers = {
@@ -423,7 +437,11 @@ async def fetch_best_bookmark(
         if not marks:
             return None
 
-        content = _pick_mark_content(marks, seed)
+        excludes = [e.strip() for e in (exclude or []) if e and e.strip()]
+        content = _pick_mark_content(marks, seed, exclude=excludes or None)
+        if excludes and is_too_similar(content, excludes):
+            return None
+
         idx = seed % len(marks)
         chapter = chapters[idx] if idx < len(chapters) else ""
 

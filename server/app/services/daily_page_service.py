@@ -12,8 +12,11 @@ from app.config import Settings
 from app.services.weread_client import fetch_best_bookmark
 
 PAGE_MAX_TOKENS = 1400
-PAGE_TEMPERATURE_DISCOVERY = 0.85
+PAGE_TEMPERATURE_DISCOVERY = 1.1
 PAGE_TEMPERATURE_SPECIFIC = 0.55
+PAGE_TEMPERATURE_SPECIFIC_VARIED = 0.78
+DISCOVERY_TOP_P = 0.92
+DISCOVERY_PRESENCE_PENALTY = 0.45
 MAX_SPECIFIC_ATTEMPTS = 2
 
 _SOURCE_NOTE_EXAMPLE = "第三章、序章、第二部 · 第一节"
@@ -93,8 +96,7 @@ _SYSTEM_PROMPT_DISCOVERY = f"""你是一个博学的荐书人。请从真实存�
 
 约束：
 - 书名和作者必须真实
-- 每次推荐不同的书（用户可能会点击换一本）
-- 涵盖文学、哲学、心理学、科普、传记等
+- 涵盖文学、哲学、心理学、科普、传记等，可重复推荐经典名作
 - 摘录有启发性、耐读
 - 写成完整小段落，有观点或可共鸣情境，勿写成单句金句
 {_SOURCE_NOTE_RULE}"""
@@ -187,7 +189,11 @@ class DailyPageService:
 
         if book_title:
             system = _SYSTEM_PROMPT_SPECIFIC
-            temperature = PAGE_TEMPERATURE_SPECIFIC
+            temperature = (
+                PAGE_TEMPERATURE_SPECIFIC_VARIED
+                if nonce > 0
+                else PAGE_TEMPERATURE_SPECIFIC
+            )
             author_hint = f"（作者：{book_author}）" if book_author else ""
             user_prompt = (
                 f"今天日期 {date.today().isoformat()}。\n"
@@ -196,14 +202,20 @@ class DailyPageService:
                 f"响应 JSON 中 book_title 必须严格等于「{book_title}」，"
                 "不要换成任何其他书。"
             )
+            if nonce > 0:
+                user_prompt += f"\n随机种子 {nonce}，请选择与以往不同的段落。"
             attempts = MAX_SPECIFIC_ATTEMPTS
+            top_p = None
+            presence_penalty = None
         else:
             system = _SYSTEM_PROMPT_DISCOVERY
             temperature = PAGE_TEMPERATURE_DISCOVERY
+            top_p = DISCOVERY_TOP_P
+            presence_penalty = DISCOVERY_PRESENCE_PENALTY
             user_prompt = (
                 f"今天日期 {date.today().isoformat()}，"
                 f"随机种子 {nonce}。"
-                "请选一本之前没推荐过的书，推荐一段精彩摘录。"
+                "请随机选一本真实好书，推荐一段精彩摘录。"
             )
             attempts = 1
 
@@ -224,6 +236,8 @@ class DailyPageService:
                 system=system,
                 user_prompt=prompt,
                 temperature=temperature,
+                top_p=top_p,
+                presence_penalty=presence_penalty,
             )
             parsed = self._parse(raw)
             if not book_title or _titles_match(book_title, parsed.book_title):
@@ -244,9 +258,11 @@ class DailyPageService:
         system: str,
         user_prompt: str,
         temperature: float,
+        top_p: float | None = None,
+        presence_penalty: float | None = None,
     ) -> str:
         url = f"{self._settings.deepseek_api_base}/chat/completions"
-        payload = {
+        payload: dict = {
             "model": self._settings.deepseek_model,
             "messages": [
                 {"role": "system", "content": system},
@@ -256,6 +272,10 @@ class DailyPageService:
             "max_tokens": PAGE_MAX_TOKENS,
             "stream": False,
         }
+        if top_p is not None:
+            payload["top_p"] = top_p
+        if presence_penalty is not None:
+            payload["presence_penalty"] = presence_penalty
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {api_key}",

@@ -2,7 +2,7 @@
 class ProxyConfig {
   ProxyConfig._();
 
-  static const baseUrl = 'http://175.178.249.107';
+  static const baseUrl = 'https://tanmystudio.site';
   static const prophecyPath = '/v1/prophecy';
   static const quotaPath = '/v1/quota';
   static const useProxy = true;

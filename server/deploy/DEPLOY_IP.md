@@ -179,11 +179,11 @@ docker compose -f docker-compose.prod.yml up -d
 
 ---
 
-## 8. 可选：主机 Nginx 反代（非 MVP 必需）
+## 8. HTTPS（tanmystudio.site）
 
-当前 `docker-compose.prod.yml` 已将容器 8000 映射到主机 **80**，MVP 可直接用 IP 访问。
+域名 **tanmystudio.site** 已备案/解析后，按 **[DEPLOY_HTTPS.md](./DEPLOY_HTTPS.md)** 安装腾讯云 SSL 证书与 Nginx。
 
-若日后需要 HTTPS 或多服务共用 80 端口，可在主机安装 Nginx，反代到 `127.0.0.1:8000`，并配合域名与 Let's Encrypt。届时需将 compose 端口改回 `127.0.0.1:8000:8000`，避免与 Nginx 争用 80。
+简要步骤：compose 改 `127.0.0.1:8000:8000` → 上传证书 → 启用 `nginx-tanmystudio.site.conf` → `curl https://tanmystudio.site/health`。
 
 ---
 
@@ -193,7 +193,7 @@ docker compose -f docker-compose.prod.yml up -d
 |------|------|
 | **IP + HTTP** | MVP 可用；Flutter 开发阶段可临时允许明文 HTTP |
 | **iOS ATS** | 正式发布需 HTTPS 域名，或在 Info.plist 为特定 IP 添加 ATS 例外（仅内测） |
-| **生产推荐** | 备案域名 + Nginx + SSL（443），客户端 `baseUrl` 改为 `https://api.yourdomain.com` |
+| **生产** | `https://tanmystudio.site`（见 DEPLOY_HTTPS.md） |
 
 ---
 

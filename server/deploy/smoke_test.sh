@@ -8,7 +8,7 @@
 #   SMOKE_SKIP_DAILY_PAGE=1 bash server/deploy/smoke_test.sh # 跳过书摘（需 DeepSeek）
 #
 # 环境变量：
-#   SMOKE_BASE_URL      默认 http://175.178.249.107
+#   SMOKE_BASE_URL      默认 https://tanmystudio.site
 #   SMOKE_DEVICE_ID     默认 auto-smoke-<时间戳>（每次新设备，避免耗尽配额）
 #   SMOKE_SKIP_PROPHECY     设为 1 时跳过 POST /v1/prophecy（不扣配额）
 #   SMOKE_SKIP_DAILY_PAGE   设为 1 时跳过 POST /v1/daily-page
@@ -16,7 +16,7 @@
 
 set -euo pipefail
 
-BASE_URL="${SMOKE_BASE_URL:-http://175.178.249.107}"
+BASE_URL="${SMOKE_BASE_URL:-https://tanmystudio.site}"
 BASE_URL="${BASE_URL%/}"
 DEVICE_ID="${SMOKE_DEVICE_ID:-auto-smoke-$(date +%s)}"
 TIMEOUT="${SMOKE_TIMEOUT:-30}"
@@ -129,10 +129,15 @@ assert_status "POST /v1/daily-page (device_id 过短)" "422" "${RESPONSE_CODE}" 
 if [[ "${SMOKE_SKIP_DAILY_PAGE:-}" == "1" ]]; then
   skip "POST /v1/daily-page (SMOKE_SKIP_DAILY_PAGE=1)"
 else
+  # 勿在 $(...) 内联 JSON：bash 会把 {"a", "b"} 当成 brace expansion 拆成两次请求
+  daily_payload="$(cat <<EOF
+{"device_id": "${DEVICE_ID}", "nonce": $(date +%s)}
+EOF
+)"
   split_response "$(
     run_request POST "/v1/daily-page" \
       -H "Content-Type: application/json" \
-      -d "{\"device_id\": \"${DEVICE_ID}\", \"nonce\": $(date +%s)}"
+      -d "${daily_payload}"
   )"
   if [[ "${RESPONSE_CODE}" == "200" ]]; then
     pass "POST /v1/daily-page (随机探索) → HTTP 200"

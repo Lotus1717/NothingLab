@@ -10,7 +10,6 @@ import httpx
 
 from app.config import Settings
 from app.services.passage_similarity import is_too_similar
-from app.services.weread_client import fetch_best_bookmark
 
 PAGE_MAX_TOKENS = 1400
 PAGE_TEMPERATURE_DISCOVERY = 1.1
@@ -135,14 +134,11 @@ class DailyPageResult:
         author: str,
         content: str,
         source_note: str,
-        *,
-        source: str = "deepseek",
     ) -> None:
         self.book_title = book_title
         self.author = author
         self.content = content
         self.source_note = source_note
-        self.source = source
 
 
 class DailyPageError(Exception):
@@ -162,7 +158,6 @@ class DailyPageService:
         book_id: str | None = None,
         book_title: str | None = None,
         book_author: str | None = None,
-        weread_cookie: str | None = None,
         nonce: int = 0,
         exclude_contents: list[str] | None = None,
     ) -> DailyPageResult:
@@ -176,35 +171,12 @@ class DailyPageService:
             if cached is not None:
                 return cached
 
-        page: DailyPageResult | None = None
-
-        if weread_cookie and book_id:
-            try:
-                seed = nonce if nonce else date.today().toordinal()
-                mark = await fetch_best_bookmark(
-                    weread_cookie,
-                    book_id,
-                    seed=seed,
-                    exclude=excludes,
-                )
-                if mark and not is_too_similar(mark["content"], excludes):
-                    page = DailyPageResult(
-                        book_title=book_title or "",
-                        author=book_author or "",
-                        content=mark["content"],
-                        source_note=mark["source_note"],
-                        source="weread",
-                    )
-            except Exception:
-                page = None
-
-        if page is None:
-            page = await self._fetch_from_deepseek(
-                book_title=book_title,
-                book_author=book_author,
-                nonce=nonce,
-                exclude_contents=excludes,
-            )
+        page = await self._fetch_from_deepseek(
+            book_title=book_title,
+            book_author=book_author,
+            nonce=nonce,
+            exclude_contents=excludes,
+        )
 
         if nonce == 0:
             self._cache[cache_key] = page
@@ -301,7 +273,6 @@ class DailyPageService:
             parsed.book_title = book_title
         if book_author:
             parsed.author = book_author
-        parsed.source = "deepseek"
         return parsed
 
     async def _call_deepseek(

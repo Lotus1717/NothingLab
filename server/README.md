@@ -7,7 +7,7 @@
 | App | 路由 |
 |-----|------|
 | 废话预言家 | `/v1/prophecy`、`/v1/quota`、`/v1/register` |
-| [拾页](../daily_page_app/) | `/v1/daily-page`、`/v1/weread/sync`、`/v1/reflection-prompt` |
+| [拾页](../daily_page_app/) | `/v1/daily-page`、`/v1/reflection-prompt` |
 
 拾页 Flutter 客户端见 `daily_page_app/`，**勿在拾页项目内维护重复 server 代码**。
 
@@ -31,7 +31,6 @@ curl http://localhost:8000/health
 | `GET` | `/v1/quota?device_id=` | 查询当日配额 |
 | `POST` | `/v1/register` | 可选设备注册 |
 | `POST` | `/v1/daily-page` | 拾页：生成书摘（`nonce=0` 消耗配额，换书不扣） |
-| `POST` | `/v1/weread/sync` | 拾页：同步微信读书书架 |
 | `POST` | `/v1/reflection-prompt` | 拾页：AI 引导提问（不扣配额） |
 
 ### POST /v1/prophecy

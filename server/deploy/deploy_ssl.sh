@@ -42,6 +42,17 @@ sudo chmod 600 /etc/nginx/ssl/tanmystudio.site.key
 echo "证书已就位: /etc/nginx/ssl/"
 REMOTE_SSL
 
+echo ">>> 上传备案首页 ..."
+ssh "${USER}@${HOST}" "sudo mkdir -p /var/www/tanmystudio.site && sudo chown ${USER}:${USER} /var/www/tanmystudio.site && rm -rf /tmp/tanmystudio-www && mkdir -p /tmp/tanmystudio-www"
+scp -r "${ROOT}/deploy/www/." "${USER}@${HOST}:/tmp/tanmystudio-www/"
+ssh "${USER}@${HOST}" bash -s <<'REMOTE_WWW'
+set -euo pipefail
+sudo cp -a /tmp/tanmystudio-www/. /var/www/tanmystudio.site/
+sudo chown -R www-data:www-data /var/www/tanmystudio.site
+rm -rf /tmp/tanmystudio-www
+echo "静态首页: /var/www/tanmystudio.site/"
+REMOTE_WWW
+
 echo ">>> 上传 Nginx 站点配置 ..."
 scp "${ROOT}/deploy/nginx-tanmystudio.site.conf" \
   "${USER}@${HOST}:/tmp/tanmystudio.site.nginx.conf"

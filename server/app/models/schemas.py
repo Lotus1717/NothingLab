@@ -47,25 +47,8 @@ class DailyPageRequest(BaseModel):
     book_id: Optional[str] = Field(default=None, max_length=64)
     book_title: Optional[str] = Field(default=None, max_length=200)
     book_author: Optional[str] = Field(default=None, max_length=200)
-    weread_cookie: Optional[str] = Field(default=None, max_length=4096)
     nonce: int = Field(default=0, ge=0)
     exclude_contents: list[str] = Field(default_factory=list, max_length=5)
-
-
-class WeReadSyncRequest(BaseModel):
-    cookie: str = Field(..., min_length=8, max_length=4096)
-
-
-class WeReadBookItem(BaseModel):
-    book_id: str
-    title: str
-    author: str = ""
-    cover: str = ""
-
-
-class WeReadSyncResponse(BaseModel):
-    books: list[WeReadBookItem]
-    count: int
 
 
 class ReflectionPromptRequest(BaseModel):

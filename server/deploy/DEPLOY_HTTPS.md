@@ -111,10 +111,23 @@ sudo systemctl reload nginx
 
 ---
 
-## 5. 验证 HTTPS
+## 5. 备案首页（静态）
+
+`https://tanmystudio.site/` 展示简短说明页；`/health`、`/v1/*` 仍反代 API。
+
+```bash
+bash server/deploy/deploy_site.sh
+```
+
+拾页隐私说明等 HTML 放到 `server/deploy/www/`（如 `privacy.html` → `https://tanmystudio.site/privacy.html`），再执行上述脚本。
+
+---
+
+## 6. 验证 HTTPS
 
 ```bash
 curl -s https://tanmystudio.site/health | python3 -m json.tool
+curl -s https://tanmystudio.site/ | head -5
 ```
 
 本机冒烟测试：
@@ -125,7 +138,7 @@ SMOKE_BASE_URL=https://tanmystudio.site bash server/deploy/smoke_test.sh
 
 ---
 
-## 6. 客户端已切换
+## 7. 客户端已切换
 
 拾页 App `ServerConfig.baseUrl` 已改为 `https://tanmystudio.site`，Info.plist 已移除 HTTP ATS 例外。
 
@@ -133,7 +146,7 @@ SMOKE_BASE_URL=https://tanmystudio.site bash server/deploy/smoke_test.sh
 
 ---
 
-## 7. 证书续期
+## 8. 证书续期
 
 腾讯云免费证书有效期约 1 年。到期前在控制台重新申请，替换 `/etc/nginx/ssl/` 下文件后执行：
 

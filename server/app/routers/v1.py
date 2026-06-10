@@ -18,16 +18,12 @@ from app.models.schemas import (
     ReflectionPromptResponse,
     RegisterRequest,
     RegisterResponse,
-    WeReadBookItem,
-    WeReadSyncRequest,
-    WeReadSyncResponse,
 )
 from app.services.daily_page_service import DailyPageError, DailyPageService
 from app.services.deepseek_client import DeepSeekClient, DeepSeekError
 from app.services.prophecy_service import generate_with_quality_gate
 from app.services.quota_service import QuotaExceededError, QuotaService, get_quota_service
 from app.services.reflection_prompt_service import ReflectionPromptService
-from app.services.weread_client import WeReadError, sync_shelf
 
 router = APIRouter(prefix="/v1", tags=["v1"])
 
@@ -75,7 +71,6 @@ async def create_daily_page(
             book_id=body.book_id,
             book_title=body.book_title,
             book_author=body.book_author,
-            weread_cookie=body.weread_cookie,
             nonce=body.nonce,
             exclude_contents=body.exclude_contents,
         )
@@ -176,19 +171,6 @@ async def get_quota(
 ) -> QuotaResponse:
     info = quota.get_quota_info(device_id)
     return QuotaResponse(**info)
-
-
-@router.post("/weread/sync", response_model=WeReadSyncResponse)
-async def sync_weread_shelf(body: WeReadSyncRequest) -> WeReadSyncResponse:
-    try:
-        books = await sync_shelf(body.cookie)
-    except WeReadError as exc:
-        raise HTTPException(status_code=400, detail=exc.message) from exc
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"微信读书同步失败: {exc}") from exc
-
-    items = [WeReadBookItem(**book) for book in books]
-    return WeReadSyncResponse(books=items, count=len(items))
 
 
 @router.post("/reflection-prompt", response_model=ReflectionPromptResponse)

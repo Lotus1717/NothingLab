@@ -121,6 +121,11 @@ bash server/deploy/deploy_site.sh
 
 拾页隐私说明等 HTML 放到 `server/deploy/www/`（如 `privacy.html` → `https://tanmystudio.site/privacy.html`），再执行上述脚本。
 
+首页应用卡片与 Android 包：
+
+- 编辑 `server/deploy/www/index.html`（卡片、iOS App Store 链接见页内 `IOS_APP_STORE_URL`）
+- APK 上传：`bash server/deploy/deploy_apk.sh`（见 `server/deploy/www/downloads/README.md`）
+
 ---
 
 ## 6. 验证 HTTPS

@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../services/ai_service.dart';
+import '../services/onboarding_service.dart';
 import '../utils/animations.dart';
 import '../widgets/app_splash.dart';
 import 'main_screen.dart';
+import 'onboarding_page.dart';
 
 class AppRoot extends StatefulWidget {
   const AppRoot({super.key});
@@ -18,6 +20,8 @@ class AppRoot extends StatefulWidget {
 
 class _AppRootState extends State<AppRoot> with SingleTickerProviderStateMixin {
   bool _splashVisible = !kIsWeb;
+  bool _showOnboarding = false;
+  bool _ready = kIsWeb;
   late final AnimationController _fadeCtrl;
   late final Animation<double> _fadeAnim;
 
@@ -36,7 +40,18 @@ class _AppRootState extends State<AppRoot> with SingleTickerProviderStateMixin {
     });
     if (_splashVisible) {
       _dismissSplash();
+    } else {
+      unawaited(_checkOnboarding());
     }
+  }
+
+  Future<void> _checkOnboarding() async {
+    final completed = await OnboardingService.isCompleted();
+    if (!mounted) return;
+    setState(() {
+      _showOnboarding = !completed;
+      _ready = true;
+    });
   }
 
   Future<void> _dismissSplash() async {
@@ -46,7 +61,13 @@ class _AppRootState extends State<AppRoot> with SingleTickerProviderStateMixin {
       await _fadeCtrl.forward();
     }
     if (!mounted) return;
-    setState(() => _splashVisible = false);
+    final completed = await OnboardingService.isCompleted();
+    if (!mounted) return;
+    setState(() {
+      _splashVisible = false;
+      _showOnboarding = !completed;
+      _ready = true;
+    });
   }
 
   @override
@@ -57,6 +78,16 @@ class _AppRootState extends State<AppRoot> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    if (!_ready) {
+      return const AppSplash();
+    }
+
+    if (_showOnboarding) {
+      return OnboardingPage(
+        onComplete: () => setState(() => _showOnboarding = false),
+      );
+    }
+
     return Stack(
       fit: StackFit.expand,
       children: [

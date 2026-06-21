@@ -108,6 +108,7 @@ class _CatPainter extends CustomPainter {
   final bool loading;
 
   static const _inkColor = Color(0xFF3A3A48);
+  static const Size designSize = Size(200, 118);
 
   _CatPainter({
     required this.tailPhase,
@@ -118,6 +119,12 @@ class _CatPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.scale(
+      size.width / designSize.width,
+      size.height / designSize.height,
+    );
+
     final alert = loading;
     final tailSway = (alert ? 3.5 : 5.0) * math.sin(tailPhase);
     final earSway = math.sin(earPhase) * (alert ? 0.8 : 1.4);
@@ -149,6 +156,7 @@ class _CatPainter extends CustomPainter {
     _drawBody(canvas, ink);
     _drawEars(canvas, ink, alert, earSway);
     _drawPaws(canvas, ink);
+    canvas.restore();
   }
 
   void _drawTail(Canvas canvas, Paint ink, double tailSway) {
@@ -254,32 +262,4 @@ class _CatPainter extends CustomPainter {
       oldDelegate.earPhase != earPhase ||
       oldDelegate.twitchEar != twitchEar ||
       oldDelegate.loading != loading;
-}
-
-/// 分享图用的静态趴睡小猫（无动画）。
-class ShareLazyCat extends StatelessWidget {
-  final double width;
-  final double height;
-
-  const ShareLazyCat({
-    super.key,
-    this.width = 168,
-    this.height = 99,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      height: height,
-      child: CustomPaint(
-        painter: _CatPainter(
-          tailPhase: 1.1,
-          earPhase: 0.6,
-          twitchEar: 0,
-          loading: false,
-        ),
-      ),
-    );
-  }
 }

@@ -41,7 +41,9 @@ Future<List<SingleChildWidget>> buildCoreTestProviders({
 
 void initTestBindings() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  SharedPreferences.setMockInitialValues({});
+  SharedPreferences.setMockInitialValues({
+    'onboarding_completed_v1': true,
+  });
 }
 
 /// Mock 所有传感器相关的 MethodChannel，防止测试时调用真实平台

@@ -53,3 +53,6 @@ flutter:
     - family: NotoSansSC
       fonts:
         - asset: assets/fonts/NotoSansSC-Variable.ttf
+          weight: 100
+        - asset: assets/fonts/NotoSansSC-Variable.ttf
+          weight: 900

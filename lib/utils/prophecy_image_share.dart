@@ -34,7 +34,7 @@ Future<void> shareRepaintBoundaryAsImage(
 
   final result = await Share.shareXFiles(
     [xFile],
-    subject: '废话预言家',
+    subject: '我的手机说我…',
     sharePositionOrigin: sharePositionOrigin,
     fileNameOverrides: [fileName],
   );

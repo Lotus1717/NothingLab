@@ -76,6 +76,23 @@ class AppTheme {
         height: 1.6,
       );
 
+  /// Onboarding 等长文案页：统一用 NotoSansSC，避免站酷快乐体缺字触发调试黄线
+  static TextStyle onboardingTitle(BuildContext context) =>
+      AppFonts.bodyStyle(
+        fontSize: 22,
+        fontWeight: FontWeight.w700,
+        color: textDark,
+        height: 1.3,
+      );
+
+  static TextStyle onboardingHero(BuildContext context) =>
+      AppFonts.bodyStyle(
+        fontSize: 28,
+        fontWeight: FontWeight.w700,
+        color: textDark,
+        height: 1.3,
+      );
+
   static BoxDecoration oracleGradientBg = const BoxDecoration(
     gradient: LinearGradient(
       begin: Alignment.topCenter,

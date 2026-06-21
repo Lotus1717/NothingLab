@@ -33,6 +33,12 @@ enum ProphecyEngine {
         ProphecyEngine.deepseek => 'DeepSeek',
         ProphecyEngine.template => '模板库',
       };
+
+  /// 首页兜底角标文案（比 label 更俏皮）
+  String get fallbackBadgeLabel => switch (this) {
+        ProphecyEngine.template => '与小猫连线中',
+        _ => label,
+      };
 }
 
 class AiService extends ChangeNotifier {
@@ -100,9 +106,15 @@ class AiService extends ChangeNotifier {
         PreferredEngine.template => ProphecyEngine.template,
       };
 
-  /// 首页角标：DeepSeek 代理能调通则显示 DeepSeek，否则模板库
-  ProphecyEngine get displayEngine =>
-      _deepSeekReachable ? ProphecyEngine.deepseek : ProphecyEngine.template;
+  /// 首页角标：仅回退模板库时展示，正常云端生成时不显示
+  bool get showFallbackBadge {
+    if (_quotaRemaining != null && _quotaRemaining! <= 0) return true;
+    if (ProxyConfig.useProxy && !_deepSeekReachable) return true;
+    return _lastProphecyEngine == ProphecyEngine.template &&
+        _currentProphecy.isNotEmpty;
+  }
+
+  String get fallbackBadgeLabel => ProphecyEngine.template.fallbackBadgeLabel;
 
   String get currentProphecy => _currentProphecy;
   int get generationSeq => _generationSeq;

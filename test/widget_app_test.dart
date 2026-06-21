@@ -111,7 +111,7 @@ void main() {
       expect(find.textContaining('步数'), findsOneWidget);
       expect(find.textContaining('系统音量'), findsOneWidget);
       expect(find.textContaining('环境亮度'), findsOneWidget);
-      expect(find.textContaining('云端由服务器代理生成'), findsOneWidget);
+      expect(find.textContaining('废话预言家 v'), findsOneWidget);
       expect(find.textContaining('生成途径'), findsNothing);
       expect(find.textContaining('DeepSeek 密钥'), findsNothing);
     });

@@ -195,7 +195,7 @@ class _SettingsPageState extends State<SettingsPage> {
               const SizedBox(height: 28),
               Center(
                 child: Text(
-                  '废话预言家 v$appVersion\n云端由服务器代理生成，每设备每日 50 次\n超限或离线时自动用模板库',
+                  '废话预言家 v$appVersion',
                   textAlign: TextAlign.center,
                   style: AppTheme.caption(context),
                 ),

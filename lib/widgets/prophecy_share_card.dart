@@ -6,7 +6,7 @@ import '../config/share_config.dart';
 import '../config/theme.dart';
 import '../models/sensor_data.dart';
 
-/// 用于生成分享图片的离屏卡片（4:5 竖版海报式）
+/// 用于生成分享图片的离屏卡片（竖版海报，高度随内容自适应）
 class ProphecyShareCard extends StatelessWidget {
   final String prophecy;
   final SensorData? sensor;
@@ -19,9 +19,8 @@ class ProphecyShareCard extends StatelessWidget {
     this.createdAt,
   });
 
-  /// 逻辑尺寸 360×540，导出时 pixelRatio 3 → 1080×1620
+  /// 逻辑宽度 360，导出时 pixelRatio 3 → 1080px 宽
   static const double cardWidth = 360;
-  static const double cardHeight = 540;
 
   static const String _appLogoAsset = 'assets/fonts/share_app_logo.jpg';
 
@@ -29,7 +28,6 @@ class ProphecyShareCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: cardWidth,
-      height: cardHeight,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
@@ -89,22 +87,23 @@ class ProphecyShareCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 22, 24, 20),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const _BrandingHeader(),
-                  const SizedBox(height: 24),
-                  Expanded(
-                    child: _ProphecyHero(prophecy: prophecy),
-                  ),
+                  const SizedBox(height: 18),
+                  const _ShareHook(),
+                  const SizedBox(height: 10),
+                  _ProphecyHero(prophecy: prophecy),
                   if (createdAt != null) ...[
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     _TimestampLine(createdAt: createdAt!),
                   ],
                   if (sensor != null) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     _SensorFootnote(sensor: sensor!),
                   ],
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
                   const _ShareFooter(),
                 ],
               ),
@@ -166,12 +165,26 @@ class _BrandingHeader extends StatelessWidget {
   }
 }
 
+class _ShareHook extends StatelessWidget {
+  const _ShareHook();
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      ShareConfig.shareHook,
+      style: AppFonts.displayStyle(
+        fontSize: 18,
+        color: AppTheme.primaryDark,
+        height: 1.2,
+      ),
+    );
+  }
+}
+
 class _ProphecyHero extends StatelessWidget {
   final String prophecy;
 
   const _ProphecyHero({required this.prophecy});
-
-  static const double minHeight = 200;
 
   static double fontSizeFor(String text) {
     final length = text.length;
@@ -189,36 +202,33 @@ class _ProphecyHero extends StatelessWidget {
     final fontSize = fontSizeFor(prophecy);
     final shortQuote = isShortQuote(prophecy);
 
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: minHeight),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.94),
-          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.oracleGold.withValues(alpha: 0.12),
-              blurRadius: 20,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Align(
-          alignment: shortQuote ? Alignment.center : Alignment.topCenter,
-          child: Text(
-            prophecy,
-            textAlign: shortQuote ? TextAlign.center : TextAlign.left,
-            maxLines: 8,
-            overflow: TextOverflow.ellipsis,
-            style: AppFonts.bodyStyle(
-              fontSize: fontSize,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.textDark,
-              height: 1.5,
-            ),
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(
+        horizontal: 20,
+        vertical: shortQuote ? 18 : 16,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.oracleGold.withValues(alpha: 0.12),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
           ),
+        ],
+      ),
+      child: Text(
+        prophecy,
+        textAlign: shortQuote ? TextAlign.center : TextAlign.left,
+        maxLines: 10,
+        overflow: TextOverflow.ellipsis,
+        style: AppFonts.bodyStyle(
+          fontSize: fontSize,
+          fontWeight: FontWeight.w600,
+          color: AppTheme.textDark,
+          height: 1.5,
         ),
       ),
     );
@@ -297,7 +307,7 @@ class _SensorFootnote extends StatelessWidget {
 class _ShareFooter extends StatelessWidget {
   const _ShareFooter();
 
-  static const double _qrSize = 64;
+  static const double _qrSize = 56;
 
   static String get _landingHost {
     final uri = Uri.tryParse(ShareConfig.landingUrl);
@@ -309,7 +319,7 @@ class _ShareFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 16, 12),
+      padding: const EdgeInsets.fromLTRB(12, 10, 14, 10),
       decoration: BoxDecoration(
         color: AppTheme.bgMint.withValues(alpha: 0.55),
         borderRadius: BorderRadius.circular(AppTheme.radiusSm),
@@ -318,7 +328,7 @@ class _ShareFooter extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(4),
+            padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(8),
@@ -339,7 +349,7 @@ class _ShareFooter extends StatelessWidget {
               backgroundColor: Colors.white,
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -354,7 +364,7 @@ class _ShareFooter extends StatelessWidget {
                     height: 1.3,
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 2),
                 Text(
                   _landingHost,
                   style: AppFonts.bodyStyle(

@@ -151,16 +151,11 @@ class _HomeHero extends StatelessWidget {
     required this.onRefreshSensors,
   });
 
-  IconData _engineIcon(ProphecyEngine engine) => switch (engine) {
-        ProphecyEngine.qwen => Icons.memory_rounded,
-        ProphecyEngine.localAi => Icons.auto_awesome_rounded,
-        ProphecyEngine.deepseek => Icons.cloud_outlined,
-        ProphecyEngine.template => Icons.library_books_outlined,
-      };
+  IconData _fallbackIcon() => Icons.pets_rounded;
 
   @override
   Widget build(BuildContext context) {
-    final engine = aiSvc.displayEngine;
+    final showBadge = aiSvc.showFallbackBadge;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -168,13 +163,15 @@ class _HomeHero extends StatelessWidget {
         Expanded(
           child: Text('废话预言家', style: AppTheme.displayTitle(context)),
         ),
-        StatusChip(
-          label: engine.label,
-          icon: _engineIcon(engine),
-          active: engine != ProphecyEngine.template,
-          activeColor: AppTheme.secondary,
-        ),
-        const SizedBox(width: 4),
+        if (showBadge) ...[
+          StatusChip(
+            label: aiSvc.fallbackBadgeLabel,
+            icon: _fallbackIcon(),
+            active: false,
+            activeColor: AppTheme.textMuted,
+          ),
+          const SizedBox(width: 4),
+        ],
         IconButton(
           icon: const Icon(Icons.refresh_rounded, size: 24),
           onPressed: onRefreshSensors,

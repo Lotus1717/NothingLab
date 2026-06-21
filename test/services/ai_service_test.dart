@@ -258,7 +258,7 @@ void main() {
       expect(prophecy, contains('三分钟'));
       expect(aiService.lastProphecyEngine, ProphecyEngine.deepseek);
       expect(aiService.quotaRemaining, 49);
-      expect(aiService.displayEngine, ProphecyEngine.deepseek);
+      expect(aiService.showFallbackBadge, isFalse);
     });
 
     test('超过每日限额时静默回退模板库', () async {
@@ -280,7 +280,8 @@ void main() {
       expect(prophecy, isNotEmpty);
       expect(aiService.lastProphecyEngine, ProphecyEngine.template);
       expect(aiService.quotaRemaining, 0);
-      expect(aiService.displayEngine, ProphecyEngine.template);
+      expect(aiService.showFallbackBadge, isTrue);
+      expect(aiService.fallbackBadgeLabel, '与小猫连线中');
     });
 
     test('代理返回 502 时静默回退模板库', () async {
@@ -303,7 +304,7 @@ void main() {
       expect(aiService.lastProphecyEngine, ProphecyEngine.template);
     });
 
-    test('配额用尽后 displayEngine 显示模板库', () async {
+    test('配额用尽后 showFallbackBadge 为 true', () async {
       SharedPreferences.setMockInitialValues({});
       final proxy = ProphecyProxyClient();
       proxy.requestOverride = (method, uri, {headers, body}) async {
@@ -328,7 +329,8 @@ void main() {
       await aiService.setPreferredEngine(PreferredEngine.deepseek);
       await Future<void>.delayed(const Duration(milliseconds: 50));
 
-      expect(aiService.displayEngine, ProphecyEngine.template);
+      expect(aiService.showFallbackBadge, isTrue);
+      expect(aiService.fallbackBadgeLabel, '与小猫连线中');
     });
 
     test('ML 模型生成失败时回退到本地', () async {

@@ -41,36 +41,38 @@ if [[ ! -f .env ]]; then
   echo "错误: ${REMOTE}/.env 不存在，请先在服务器上配置 DEEPSEEK_API_KEY" >&2
   exit 1
 fi
+if grep -q '"80:8000"' docker-compose.prod.yml 2>/dev/null; then
+  sed -i.bak 's/"80:8000"/"127.0.0.1:8000:8000"/' docker-compose.prod.yml
+  echo "compose 端口已改为 127.0.0.1:8000（80/443 由 Nginx 占用）"
+fi
 sudo docker compose -f docker-compose.prod.yml build
-sudo docker compose -f docker-compose.prod.yml up -d
+sudo docker compose -f docker-compose.prod.yml up -d --force-recreate
 echo ""
 echo "等待服务就绪..."
-for i in \$(seq 1 20); do
-  if curl -sf http://127.0.0.1/health >/dev/null 2>&1; then
+for i in \$(seq 1 30); do
+  if curl -sf http://127.0.0.1:8000/health >/dev/null 2>&1; then
     echo "健康检查:"
-    curl -sf http://127.0.0.1/health | python3 -m json.tool
+    curl -sf http://127.0.0.1:8000/health | python3 -m json.tool
     break
   fi
   sleep 1
-  if [[ "\$i" -eq 20 ]]; then
+  if [[ "\$i" -eq 30 ]]; then
     echo "警告: 健康检查超时，请手动执行: sudo docker compose -f docker-compose.prod.yml logs app" >&2
     exit 1
   fi
 done
 echo ""
 echo "daily-page 路由:"
+daily_payload='{"device_id":"deploy-smoke-test","nonce":999999}'
 curl -sf -o /dev/null -w "POST /v1/daily-page → HTTP %{http_code}\n" \
-  -X POST http://127.0.0.1/v1/daily-page \
+  -X POST http://127.0.0.1:8000/v1/daily-page \
   -H 'Content-Type: application/json' \
-  -d '{"device_id":"deploy-smoke-test","nonce":999999}' || true
+  -d "\${daily_payload}" || true
 EOF
 
 echo ""
-echo ">>> 本机冒烟（daily-page discovery）..."
-curl -sS -m 60 -X POST "http://${HOST}/v1/daily-page" \
-  -H 'Content-Type: application/json' \
-  -d '{"device_id":"deploy-smoke-test-001","nonce":0}' \
-  | python3 -m json.tool || echo "（若 404 说明容器尚未加载新路由，请检查 ssh 日志）"
+echo ">>> 本机冒烟（HTTPS）..."
+curl -sS -m 60 "https://tanmystudio.site/health" | python3 -m json.tool || true
 
 echo ""
-echo "完成。App baseUrl: http://${HOST}"
+echo "完成。App baseUrl: https://tanmystudio.site"

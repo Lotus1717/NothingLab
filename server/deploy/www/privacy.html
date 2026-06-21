@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>废话预言家 · 隐私政策</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+      background: linear-gradient(160deg, #fff5f3 0%, #f0faf7 100%);
+      color: #3d3d3d;
+      padding: 24px 16px 48px;
+      line-height: 1.7;
+    }
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 16px;
+      padding: 36px 28px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #2c2c2c;
+      margin-bottom: 8px;
+    }
+    .meta {
+      font-size: 0.85rem;
+      color: #999;
+      margin-bottom: 28px;
+    }
+    h2 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #2c2c2c;
+      margin: 28px 0 10px;
+    }
+    p, li {
+      font-size: 0.95rem;
+      color: #555;
+    }
+    p { margin-bottom: 12px; }
+    ul {
+      margin: 0 0 12px 1.2em;
+    }
+    li { margin-bottom: 6px; }
+    a { color: #7ec8b8; }
+    footer {
+      margin-top: 36px;
+      padding-top: 20px;
+      border-top: 1px solid #eee;
+      font-size: 0.85rem;
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>废话预言家 · 隐私政策</h1>
+    <p class="meta">生效日期：2026 年 6 月 21 日 · 版本 1.0.0</p>
+
+    <p>
+      「废话预言家」（以下简称「本 App」）由 tanmystudio.site 运营者（以下简称「我们」）提供。
+      本政策说明我们如何收集、使用与保护您的信息。使用本 App 即表示您同意本政策。
+    </p>
+
+    <h2>1. 我们收集哪些信息</h2>
+    <p><strong>1.1 仅保存在您设备本地的信息</strong></p>
+    <ul>
+      <li><strong>收藏内容</strong>：您收藏的预言文本及时间，存储于设备本地，不会上传。</li>
+      <li><strong>使用统计（本地）</strong>：生成次数、收藏次数等，仅用于 App 内展示，不上传服务器。</li>
+      <li><strong>偏好设置</strong>：如每日提醒开关与时间、首次引导完成状态等。</li>
+      <li><strong>安装标识符</strong>：首次启动时在本地生成并保存一个随机 UUID（device_id），用于服务端配额统计（见下文）。</li>
+    </ul>
+    <p><strong>1.2 经您授权后读取的传感器信息</strong></p>
+    <p>
+      为生成「无厘头预言」，本 App 可能读取电量、充电状态、屏幕亮度、系统音量、
+      今日步数、是否在走动、环境亮度及当前时间段提示等。
+      您可在系统设置中拒绝相关权限；拒绝后 App 会使用模拟数据，仍可正常使用核心功能。
+    </p>
+    <p><strong>1.3 上传至我们服务器的信息</strong></p>
+    <p>
+      当您使用云端 AI 生成预言时，App 会向
+      <a href="https://tanmystudio.site/">https://tanmystudio.site</a>
+      发送：
+    </p>
+    <ul>
+      <li>上述 device_id（不含姓名、手机号等个人身份信息）；</li>
+      <li>当前传感器读数的摘要（JSON 格式，用于编写预言文案）；</li>
+      <li>请求序号（nonce），用于防止重复提交。</li>
+    </ul>
+    <p>
+      服务器按 device_id 统计每日调用次数（默认 50 次/自然日，Asia/Shanghai），
+      并将传感器摘要转发至第三方 AI 服务（DeepSeek）以生成中文预言文本。
+      API 密钥仅保存在我们的服务器，不会写入 App 安装包。
+    </p>
+    <p><strong>1.4 推送通知</strong></p>
+    <p>
+      若您在 App 内主动开启「每日提醒」，我们会请求系统通知权限，
+      并在您设定的时间发送本地提醒。通知内容不会包含您的传感器原始数据。
+    </p>
+    <p><strong>1.5 我们不会收集</strong></p>
+    <ul>
+      <li>账号注册信息（本 App 无需登录）；</li>
+      <li>精确地理位置、通讯录、相册、麦克风、相机；</li>
+      <li>广告标识符（IDFA）或跨 App 追踪数据。</li>
+    </ul>
+
+    <h2>2. 信息如何使用</h2>
+    <ul>
+      <li>生成、展示与分享预言内容；</li>
+      <li>在设备本地保存收藏与偏好；</li>
+      <li>执行每日云端配额管理与防滥用；</li>
+      <li>在您开启时发送本地推送提醒；</li>
+      <li>在配额用尽或网络不可用时，自动使用内置模板库（不上传传感器数据）。</li>
+    </ul>
+
+    <h2>3. 信息共享与第三方</h2>
+    <p>
+      我们不会出售您的个人信息。传感器摘要仅在我们控制的服务器上处理，
+      并可能转发至 DeepSeek API 以完成 AI 文本生成。
+      除上述服务所必需外，我们不会向其他第三方共享可识别个人的信息。
+    </p>
+
+    <h2>4. 数据存储与安全</h2>
+    <ul>
+      <li>本地数据存储于您设备的系统沙盒中；</li>
+      <li>与服务器通信使用 HTTPS（TLS）加密；</li>
+      <li>服务端每日配额记录存储于我们服务器的数据库，按自然日滚动，不用于建立用户画像。</li>
+    </ul>
+
+    <h2>5. 数据保留</h2>
+    <ul>
+      <li>本地收藏与设置：直至您卸载 App 或清除 App 数据；</li>
+      <li>服务端配额记录：按自然日计数，用于当日限流，我们不会将其用于长期用户档案；</li>
+      <li>卸载 App 后，本地 device_id 与收藏将一并删除；服务端历史计数可能保留于匿名统计中。</li>
+    </ul>
+
+    <h2>6. 您的权利</h2>
+    <p>
+      您可随时在系统「设置 → 隐私」中撤销运动、传感器或通知权限；
+      可在 App 内关闭每日提醒、清空收藏。
+      如需删除服务端与 device_id 相关的记录，请通过下方联系方式与我们联系。
+    </p>
+
+    <h2>7. 未成年人</h2>
+    <p>
+      本 App 面向一般娱乐用途，不面向 13 周岁以下儿童主动收集个人信息。
+      若您认为我们在未经监护人同意的情况下收集了儿童信息，请联系我们处理。
+    </p>
+
+    <h2>8. 政策更新</h2>
+    <p>
+      我们可能适时更新本政策，并在本页面修订「生效日期」。
+      重大变更时，我们会在 App 内或通过其他合理方式提示。
+    </p>
+
+    <h2>9. 联系我们</h2>
+    <p>
+      网站：<a href="https://tanmystudio.site/">https://tanmystudio.site</a><br>
+      如对隐私有疑问或需行使相关权利，请通过上述网站与我们取得联系。
+    </p>
+
+    <footer>
+      <a href="/">返回首页</a>
+      · tanmystudio.site
+    </footer>
+  </main>
+</body>
+</html>

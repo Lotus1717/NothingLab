@@ -8,7 +8,7 @@
 PRODUCT_NAME = nonsense_prophet
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.example.nonsenseProphet
+PRODUCT_BUNDLE_IDENTIFIER = site.tanmystudio.nonsenseprophet
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2026 com.example. All rights reserved.

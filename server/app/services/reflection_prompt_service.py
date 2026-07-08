@@ -1,44 +1,82 @@
-"""AI 辅助提问 — 引导写感想，不代写。"""
+"""AI 辅助提问 — 按阅读模式引导写感想，不代写。"""
 
 from __future__ import annotations
 
 import json
 import re
+from dataclasses import dataclass
 
 import httpx
 
 from app.config import Settings
+from app.models.reading_mode import MODE_LABELS, resolve_mode
+from app.services.deep_reflection_service import DeepReflectionService
+from app.services.reflection_prompt_builder import (
+    BASE_RULES,
+    build_first_turn_user,
+    FALLBACK_FIRST,
+    MODE_FIRST_TURN,
+)
 
-_PROMPT_SYSTEM = """你是一位温和的阅读陪伴者。用户刚读完一页书摘，你需要提一个简短、开放的问题，引导 TA 写一句感想。
 
-要求：
-- 只输出一个问题，15-30 字
-- 不要替用户写感想
-- 不要总结书摘内容
-- 问题要有温度，像朋友聊天
-- 直接输出问题文本，不要 JSON、不要引号"""
+@dataclass
+class FirstQuestionResult:
+    question: str
+    reading_mode: str
+    mode_label: str
 
 
 class ReflectionPromptService:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
+        self._deep = DeepReflectionService(settings)
 
-    async def generate(self, book_title: str, content: str) -> str:
+    async def generate(
+        self,
+        book_title: str,
+        content: str,
+        *,
+        author: str = "",
+        reading_mode: str = "auto",
+    ) -> FirstQuestionResult:
+        resolved = reading_mode
+        if reading_mode == "auto":
+            detected = await self._deep.detect_mode(book_title, author, content)
+            resolved = resolve_mode(
+                "auto",
+                str(detected.get("reading_mode")),
+                float(detected.get("confidence", 0)),
+            )
+
+        question = await self._generate_first_question(
+            resolved, book_title, author, content
+        )
+        return FirstQuestionResult(
+            question=question,
+            reading_mode=resolved,
+            mode_label=MODE_LABELS.get(resolved, "共鸣式"),
+        )
+
+    async def _generate_first_question(
+        self, mode: str, book_title: str, author: str, content: str
+    ) -> str:
         api_key = self._settings.deepseek_api_key
         if not api_key:
-            return self._fallback(book_title, content)
+            return self._fallback(mode, book_title, content)
 
+        system = f"{MODE_FIRST_TURN.get(mode, MODE_FIRST_TURN['resonance'])}\n\n{BASE_RULES}\n直接输出问题文本，不要 JSON、不要引号。"
+        user_msg = build_first_turn_user(mode, book_title, author, content)
+        raw = await self._call_deepseek_text(system, user_msg)
+        raw = re.sub(r"^[「『\"']|[」』\"']$", "", raw)
+        return raw if raw else self._fallback(mode, book_title, content)
+
+    async def _call_deepseek_text(self, system: str, user: str) -> str:
         url = f"{self._settings.deepseek_api_base}/chat/completions"
-        user_msg = (
-            f"书名：《{book_title}》\n"
-            f"今日读到的内容：{content[:600]}\n"
-            "请提一个问题，引导用户写一句感想。"
-        )
         payload = {
             "model": self._settings.deepseek_model,
             "messages": [
-                {"role": "system", "content": _PROMPT_SYSTEM},
-                {"role": "user", "content": user_msg},
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
             ],
             "temperature": 0.9,
             "max_tokens": 80,
@@ -46,7 +84,7 @@ class ReflectionPromptService:
         }
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}",
+            "Authorization": f"Bearer {self._settings.deepseek_api_key}",
         }
 
         async with httpx.AsyncClient(
@@ -55,24 +93,31 @@ class ReflectionPromptService:
             response = await client.post(url, json=payload, headers=headers)
 
         if response.status_code != 200:
-            return self._fallback(book_title, content)
+            return ""
 
         decoded = response.json()
         choices = decoded.get("choices") or []
         if not choices:
-            return self._fallback(book_title, content)
+            return ""
 
         raw = choices[0].get("message", {}).get("content", "").strip()
-        raw = re.sub(r"^[「『\"']|[」』\"']$", "", raw)
-        return raw if raw else self._fallback(book_title, content)
+        parsed = self._try_parse_question_json(raw)
+        return parsed or raw
 
     @staticmethod
-    def _fallback(book_title: str, content: str) -> str:
-        _pool = [
-            "这段里，哪一句话最打动你？",
-            "读到这里，你想到了生活中的什么事？",
-            "如果用一句话回应这段文字，你会说什么？",
-            f"《{book_title}》的这一段，让你想起了什么？",
-        ]
-        seed = hash(book_title + content[:50])
-        return _pool[seed % len(_pool)]
+    def _try_parse_question_json(raw: str) -> str:
+        try:
+            data = json.loads(raw)
+            if isinstance(data, dict):
+                q = data.get("question")
+                if isinstance(q, str) and q.strip():
+                    return q.strip()
+        except json.JSONDecodeError:
+            pass
+        return ""
+
+    @staticmethod
+    def _fallback(mode: str, book_title: str, content: str) -> str:
+        pool = FALLBACK_FIRST.get(mode, FALLBACK_FIRST["resonance"])
+        seed = hash(book_title + content[:50] + mode)
+        return pool[seed % len(pool)]

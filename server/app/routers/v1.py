@@ -11,6 +11,8 @@ from app.config import Settings, get_settings
 from app.models.schemas import (
     DailyPageRequest,
     DailyPageResponse,
+    DeepReflectionRequest,
+    DeepReflectionResponse,
     ProphecyRequest,
     ProphecyResponse,
     QuotaResponse,
@@ -23,6 +25,7 @@ from app.services.daily_page_service import DailyPageError, DailyPageService
 from app.services.deepseek_client import DeepSeekClient, DeepSeekError
 from app.services.prophecy_service import generate_with_quality_gate
 from app.services.quota_service import QuotaExceededError, QuotaService, get_quota_service
+from app.services.deep_reflection_service import DeepReflectionService
 from app.services.reflection_prompt_service import ReflectionPromptService
 
 router = APIRouter(prefix="/v1", tags=["v1"])
@@ -44,6 +47,12 @@ def _reflection_prompt_service(
     settings: Settings = Depends(get_settings),
 ) -> ReflectionPromptService:
     return ReflectionPromptService(settings)
+
+
+def _deep_reflection_service(
+    settings: Settings = Depends(get_settings),
+) -> DeepReflectionService:
+    return DeepReflectionService(settings)
 
 
 @router.post("/daily-page", response_model=DailyPageResponse)
@@ -178,5 +187,44 @@ async def create_reflection_prompt(
     body: ReflectionPromptRequest,
     prompt_svc: ReflectionPromptService = Depends(_reflection_prompt_service),
 ) -> ReflectionPromptResponse:
-    question = await prompt_svc.generate(body.book_title, body.content)
-    return ReflectionPromptResponse(question=question)
+    result = await prompt_svc.generate(
+        body.book_title,
+        body.content,
+        author=body.author,
+        reading_mode=body.reading_mode,
+    )
+    return ReflectionPromptResponse(
+        question=result.question,
+        reading_mode=result.reading_mode,  # type: ignore[arg-type]
+        mode_label=result.mode_label,
+    )
+
+
+@router.post("/deep-reflection", response_model=DeepReflectionResponse)
+async def create_deep_reflection(
+    body: DeepReflectionRequest,
+    deep_svc: DeepReflectionService = Depends(_deep_reflection_service),
+    settings: Settings = Depends(get_settings),
+) -> DeepReflectionResponse:
+    if not settings.deepseek_configured:
+        raise HTTPException(status_code=503, detail="DeepSeek API 未配置")
+
+    history = [{"role": h.role, "content": h.content} for h in body.history]
+    try:
+        result = await deep_svc.continue_reflection(
+            book_title=body.book_title,
+            author=body.author,
+            content=body.content,
+            reading_mode=body.reading_mode,
+            history=history,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    return DeepReflectionResponse(
+        question=str(result["question"]),
+        reading_mode=result["reading_mode"],  # type: ignore[arg-type]
+        depth_level=int(result["depth_level"]),
+        depth_label=str(result["depth_label"]),
+        can_conclude=bool(result.get("can_conclude", False)),
+    )
